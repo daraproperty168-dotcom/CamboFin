@@ -1,973 +1,1884 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Wallet, PieChart, TrendingUp, TrendingDown, 
-  Settings, LogOut, Plus, Trash2, Edit, 
-  Download, Printer, FileText, AlertTriangle,
-  Target, CheckCircle, ArrowUpCircle, ArrowDownCircle,
-  Menu, X
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយប្រចាំថ្ងៃ - Daily Finance Tracker</title>
+    <!-- Google Fonts: Kantumruy Pro for professional Khmer UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (Excel Export) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF (PDF Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
-export default function App() {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('financeUser')) || null);
-  const [transactions, setTransactions] = useState(() => JSON.parse(localStorage.getItem('transactions')) || []);
-  const [budgets, setBudgets] = useState(() => JSON.parse(localStorage.getItem('budgets')) || []);
-  const [savings, setSavings] = useState(() => JSON.parse(localStorage.getItem('savings')) || []);
-  const [debts, setDebts] = useState(() => JSON.parse(localStorage.getItem('debts')) || []);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [displayCurrency, setDisplayCurrency] = useState('USD');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        khmer: ['"Kantumruy Pro"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
 
-  useEffect(() => localStorage.setItem('financeUser', JSON.stringify(user)), [user]);
-  useEffect(() => localStorage.setItem('transactions', JSON.stringify(transactions)), [transactions]);
-  useEffect(() => localStorage.setItem('budgets', JSON.stringify(budgets)), [budgets]);
-  useEffect(() => localStorage.setItem('savings', JSON.stringify(savings)), [savings]);
-  useEffect(() => localStorage.setItem('debts', JSON.stringify(debts)), [debts]);
-
-  if (!user) return <LoginScreen onLogin={setUser} />;
-
-  const TABS = [
-    { id: 'dashboard', label: 'ផ្ទាំងព័ត៌មាន (Dashboard)', icon: Wallet, emoji: '📊' },
-    { id: 'transactions', label: 'ប្រតិបត្តិការ (Transactions)', icon: FileText, emoji: '💸' },
-    { id: 'budgets', label: 'កញ្ចប់ថវិកា & សន្សំ (Budgets)', icon: Target, emoji: '🎯' },
-    { id: 'debts', label: 'គ្រប់គ្រងបំណុល (Debts)', icon: AlertTriangle, emoji: '🤝' },
-    { id: 'reports', label: 'របាយការណ៍ (Reports)', icon: PieChart, emoji: '📈' },
-  ];
-
-  return (
-    <div className="flex h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-72 
-        bg-white border-r border-slate-200 
-        transform transition-transform duration-300 ease-in-out
-        flex flex-col h-full shadow-2xl lg:shadow-none
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-white">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-indigo-200 text-white">
-              <Wallet size={24} />
+    <!-- LOGIN SCREEN -->
+    <div id="login-container" class="fixed inset-0 bg-slate-100 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl border border-slate-200/60 space-y-6">
+            <div class="text-center space-y-2">
+                <div class="inline-flex bg-indigo-100 text-indigo-600 p-4 rounded-2xl shadow-inner mb-2">
+                    <i class="fa-solid fa-wallet text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">ចូលប្រើប្រាស់ប្រព័ន្ធ</h2>
+                <p class="text-xs text-slate-500">ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយប្រចាំថ្ងៃ</p>
             </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-800 tracking-tight">Cambo<span className="text-indigo-600">Fin</span></h1>
-              <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ប្រព័ន្ធហិរញ្ញវត្ថុ</p>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">លេខទូរស័ព្ទ ឬ អ៊ីម៉ែល</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-user text-sm"></i>
+                        </span>
+                        <input type="text" id="login-username" required class="pl-9 pr-3 py-2.5 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ឧ. info@domain.com ឬ 012345678">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">លេខកូដសម្ងាត់</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-lock text-sm"></i>
+                        </span>
+                        <input type="password" id="login-password" required class="pl-9 pr-3 py-2.5 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-400 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <i class="fa-solid fa-circle-info mr-1 text-indigo-500"></i> អ្នកអាចសាកល្បងបញ្ចូលគណនីណាក៏បានដើម្បីសាកល្បង (ឧ. admin@finance.com)។
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition-colors shadow-md shadow-indigo-100">
+                    ចូលគណនី
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER (HIDDEN UNTIL LOGIN) -->
+    <div id="app-container" class="hidden flex-1 flex flex-col">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-wallet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900">ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយប្រចាំថ្ងៃ</h1>
+                    <p class="text-xs text-slate-500">គ្រប់គ្រងហិរញ្ញវត្ថុផ្ទាល់ខ្លួន គ្រួសារ និងអាជីវកម្មខ្នាតតូច</p>
+                </div>
             </div>
-          </div>
-          <button className="lg:hidden p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors" onClick={() => setIsSidebarOpen(false)}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-200">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
-                activeTab === tab.id 
-                  ? 'bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100/50 font-bold' 
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-              }`}
-            >
-              <span className="text-xl group-hover:scale-110 transition-transform">{tab.emoji}</span>
-              <span className="flex-1 text-left">{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center justify-between px-2 mb-4">
-             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">រូបិយប័ណ្ណបង្ហាញ</span>
-             <select 
-                value={displayCurrency} 
-                onChange={(e) => setDisplayCurrency(e.target.value)}
-                className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500/20 text-indigo-700 font-bold shadow-sm cursor-pointer"
-              >
-               <option value="USD">💵 USD</option>
-               <option value="KHR">៛ KHR</option>
-             </select>
-          </div>
-          <button 
-            onClick={() => { if(confirm('តើអ្នកពិតជាចង់ចាកចេញមែនទេ?')) setUser(null); }}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors font-semibold"
-          >
-            <LogOut size={18} />
-            <span>ចាកចេញ (Logout)</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header (Mobile) */}
-        <header className="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-            <Menu size={24} />
-          </button>
-          <div className="font-bold text-slate-800">CamboFin</div>
-          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold text-sm">
-            {user.name.charAt(0)}
-          </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="text-xs text-slate-400 hidden lg:block bg-slate-50 border border-slate-200/60 px-3 py-2 rounded-xl">
+                    <i class="fa-solid fa-money-bill-transfer text-indigo-500 mr-1"></i> អត្រាប្តូរប្រាក់៖ $1 = 4,100 ៛
+                </div>
+                
+                <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-[10px] text-slate-400">ស្វាគមន៍មកកាន់</p>
+                        <p id="user-display" class="text-xs font-bold text-slate-800">user@example.com</p>
+                    </div>
+                    <button onclick="handleLogout()" title="ចាកចេញ" class="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center hover:bg-rose-100 transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
         </header>
 
-        {/* Dynamic Views Container */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scrollbar-thin scrollbar-thumb-slate-200">
-          <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Greeting Header (Desktop) */}
-            <div className="hidden lg:flex items-center justify-between mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-              <div>
-                <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-                  សួស្តី, {user.name} <span className="text-4xl animate-wave origin-bottom-right inline-block">👋</span>
-                </h2>
-                <p className="text-slate-500 mt-1 font-medium">ស្វាគមន៍មកកាន់ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុដ៏ឆ្លាតវៃរបស់អ្នក។ ✨</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-blue-50 rounded-2xl flex items-center justify-center border border-indigo-100 shadow-sm">
-                <span className="text-2xl font-black text-indigo-600">{user.name.charAt(0)}</span>
-              </div>
-            </div>
+        <div class="flex-1 flex flex-col md:flex-row">
+            <!-- Sidebar Navigation -->
+            <aside class="w-full md:w-64 bg-white border-r border-slate-200 p-4 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible sticky top-16 z-20 md:h-[calc(100vh-73px)] shrink-0">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-indigo-600 bg-indigo-50">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                    <span class="whitespace-nowrap">ផ្ទាំងព័ត៌មាន</span>
+                </button>
+                <button onclick="switchTab('transactions')" id="nav-transactions" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-list-check text-lg"></i>
+                    <span class="whitespace-nowrap">ប្រតិបត្តិការ</span>
+                </button>
+                <button onclick="switchTab('budget-savings')" id="nav-budget-savings" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-piggy-bank text-lg"></i>
+                    <span class="whitespace-nowrap">កញ្ចប់ថវិកា & សន្សំ</span>
+                </button>
+                <button onclick="switchTab('debts')" id="nav-debts" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-hand-holding-dollar text-lg"></i>
+                    <span class="whitespace-nowrap">ការតាមដានបំណុល</span>
+                </button>
+                <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-slate-600 hover:bg-slate-50">
+                    <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+                    <span class="whitespace-nowrap">របាយការណ៍</span>
+                </button>
+            </</aside>
 
-            {activeTab === 'dashboard' && <DashboardView transactions={transactions} displayCurrency={displayCurrency} budgets={budgets} />}
-            {activeTab === 'transactions' && <TransactionsView transactions={transactions} setTransactions={setTransactions} displayCurrency={displayCurrency} />}
-            {activeTab === 'budgets' && <BudgetsSavingsView transactions={transactions} budgets={budgets} setBudgets={setBudgets} savings={savings} setSavings={setSavings} displayCurrency={displayCurrency} />}
-            {activeTab === 'debts' && <DebtsView debts={debts} setDebts={setDebts} displayCurrency={displayCurrency} />}
-            {activeTab === 'reports' && <ReportsView transactions={transactions} debts={debts} budgets={budgets} savings={savings} displayCurrency={displayCurrency} />}
-          </div>
-        </div>
-      </main>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes wave {
-          0% { transform: rotate( 0.0deg) }
-          10% { transform: rotate(14.0deg) }
-          20% { transform: rotate(-8.0deg) }
-          30% { transform: rotate(14.0deg) }
-          40% { transform: rotate(-4.0deg) }
-          50% { transform: rotate(10.0deg) }
-          60% { transform: rotate( 0.0deg) }
-          100% { transform: rotate( 0.0deg) }
-        }
-        .animate-wave { animation: wave 2.5s infinite; }
-      `}} />
-    </div>
-  );
-}
-
-// ==========================================
-// VIEWS COMPONENTS
-// ==========================================
-
-function LoginScreen({ onLogin }) {
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (name && contact) {
-      onLogin({ name, contact, joined: new Date().toISOString() });
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-3xl" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/40 rounded-full blur-3xl" />
-      
-      <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/50 w-full max-w-md p-8 sm:p-10 relative z-10 animate-in zoom-in-95 duration-500">
-        <div className="flex justify-center mb-8">
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-500 p-5 rounded-2xl shadow-xl shadow-indigo-200">
-            <Wallet size={48} className="text-white" strokeWidth={1.5} />
-          </div>
-        </div>
-        <h1 className="text-3xl font-black text-center text-slate-800 mb-3 tracking-tight">Cambo<span className="text-indigo-600">Fin</span> 🚀</h1>
-        <p className="text-center text-slate-500 mb-8 font-medium">ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុផ្ទាល់ខ្លួន និងអាជីវកម្មខ្នាតតូចរបស់អ្នក</p>
-        
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-slate-700">ឈ្មោះរបស់អ្នក <span className="text-red-500">*</span></label>
-            <div className="relative">
-              <input 
-                type="text" 
-                required 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full pl-4 pr-10 py-3.5 bg-slate-50/50 rounded-xl border border-slate-200 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-medium placeholder-slate-400"
-                placeholder="ឧ. សុខ សាន្ត" 
-              />
-              <span className="absolute right-3 top-3.5 text-xl">👤</span>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-slate-700">លេខទូរស័ព្ទ រឺ អ៊ីម៉ែល <span className="text-red-500">*</span></label>
-            <div className="relative">
-              <input 
-                type="text" 
-                required 
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                className="w-full pl-4 pr-10 py-3.5 bg-slate-50/50 rounded-xl border border-slate-200 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-medium placeholder-slate-400"
-                placeholder="012 345 678 / mail@example.com" 
-              />
-              <span className="absolute right-3 top-3.5 text-xl">📱</span>
-            </div>
-          </div>
-          <button 
-            type="submit" 
-            className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all transform hover:-translate-y-0.5 mt-6 flex justify-center items-center gap-2"
-          >
-            <span>ចូលប្រើប្រាស់គណនី</span>
-            <span className="text-xl">✨</span>
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function DashboardView({ transactions, displayCurrency, budgets }) {
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-
-  const stats = useMemo(() => {
-    let income = 0, expense = 0;
-    transactions.forEach(t => {
-      const d = new Date(t.date);
-      if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-        let stdAmount = parseFloat(t.amount);
-        if(t.currency === 'KHR') stdAmount = stdAmount / 4000;
-        if (t.type === 'income') income += stdAmount;
-        else expense += stdAmount;
-      }
-    });
-    return { income, expense, balance: income - expense };
-  }, [transactions, currentMonth, currentYear]);
-
-  const overBudgetAlerts = useMemo(() => {
-    const alerts = [];
-    budgets.forEach(b => {
-      let spent = 0;
-      transactions.forEach(t => {
-        const d = new Date(t.date);
-        if (t.type === 'expense' && t.category === b.category && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-           let amt = parseFloat(t.amount);
-           if (t.currency === 'KHR') amt /= 4000;
-           spent += amt;
-        }
-      });
-      let limit = parseFloat(b.limit);
-      if (b.currency === 'KHR') limit /= 4000;
-      
-      if (spent > limit) {
-        alerts.push({ category: b.category, spent, limit });
-      }
-    });
-    return alerts;
-  }, [budgets, transactions, currentMonth, currentYear]);
-
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="ចំណូលប្រចាំខែនេះ" amount={stats.income} type="income" currency={displayCurrency} icon={TrendingUp} emoji="💰" />
-        <StatCard title="ចំណាយប្រចាំខែនេះ" amount={stats.expense} type="expense" currency={displayCurrency} icon={TrendingDown} emoji="💸" />
-        <StatCard title="សមតុល្យ (Balance)" amount={stats.balance} type="balance" currency={displayCurrency} icon={Wallet} emoji="⚖️" />
-      </div>
-
-      {overBudgetAlerts.length > 0 && (
-        <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 p-5 rounded-2xl shadow-sm shadow-red-100 flex items-start gap-4">
-          <div className="bg-red-100 p-3 rounded-full text-red-600 shrink-0">
-            <AlertTriangle size={24} />
-          </div>
-          <div>
-            <h4 className="text-red-800 font-bold mb-2 flex items-center gap-2">
-              <span>ការព្រមាន៖ ការចំណាយលើសកញ្ចប់ថវិកា 🚨</span>
-            </h4>
-            <ul className="space-y-1.5 text-sm text-red-700/80 font-medium">
-              {overBudgetAlerts.map((a, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                  អ្នកបានចំណាយលើសលើ <strong className="text-red-700 bg-red-100/50 px-2 py-0.5 rounded">{a.category}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-            <span>ប្រតិបត្តិការថ្មីៗ 📝</span>
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-500 uppercase text-[11px] font-extrabold tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-4">កាលបរិច្ឆេទ</th>
-                <th className="px-6 py-4">ប្រភេទ</th>
-                <th className="px-6 py-4">ចំណាត់ថ្នាក់</th>
-                <th className="px-6 py-4 text-right">ទឹកប្រាក់</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {transactions.slice().reverse().slice(0, 5).map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{new Date(t.date).toLocaleDateString('km-KH')}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                      t.type === 'income' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
-                    }`}>
-                      {t.type === 'income' ? '📈 ចំណូល' : '📉 ចំណាយ'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-slate-700">{t.category}</td>
-                  <td className={`px-6 py-4 text-right font-black whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {t.type === 'income' ? '+' : '-'}{t.amount} <span className="text-xs font-bold opacity-70">{t.currency}</span>
-                  </td>
-                </tr>
-              ))}
-              {transactions.length === 0 && (
-                 <tr>
-                   <td colSpan="4" className="text-center py-12 text-slate-400 font-medium">
-                     <div className="text-4xl mb-3 opacity-50">📭</div>
-                     មិនទាន់មានទិន្នន័យប្រតិបត្តិការទេ
-                   </td>
-                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ title, amount, type, currency, icon: Icon, emoji }) {
-  const styles = {
-    income: 'from-emerald-50 to-teal-50 border-emerald-100 text-emerald-700 icon-bg-emerald-100 icon-text-emerald-600 shadow-emerald-100/50',
-    expense: 'from-rose-50 to-pink-50 border-rose-100 text-rose-700 icon-bg-rose-100 icon-text-rose-600 shadow-rose-100/50',
-    balance: 'from-indigo-50 to-blue-50 border-indigo-100 text-indigo-700 icon-bg-indigo-100 icon-text-indigo-600 shadow-indigo-100/50'
-  };
-  
-  let finalAmt = amount;
-  if(currency === 'KHR') finalAmt = amount * 4000;
-  
-  const displayAmt = currency === 'USD' 
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(finalAmt)
-    : new Intl.NumberFormat('km-KH', { style: 'currency', currency: 'KHR', maximumFractionDigits: 0 }).format(finalAmt);
-
-  const style = styles[type];
-
-  return (
-    <div className={`p-6 rounded-3xl border bg-gradient-to-br shadow-sm flex items-center justify-between transition-transform hover:-translate-y-1 duration-300 ${style}`}>
-      <div className="space-y-1">
-        <p className="text-sm font-bold opacity-70 flex items-center gap-2">
-          {title} <span className="text-lg">{emoji}</span>
-        </p>
-        <h3 className="text-3xl font-black tracking-tight">
-          {displayAmt}
-        </h3>
-      </div>
-      <div className={`p-4 rounded-2xl bg-white/60 shadow-sm backdrop-blur-sm`}>
-        <Icon size={28} strokeWidth={2.5} className="opacity-80" />
-      </div>
-    </div>
-  );
-}
-
-function TransactionsView({ transactions, setTransactions, displayCurrency }) {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const CATEGORIES = {
-    income: ['លក់ទំនិញ 🛍️', 'ប្រាក់ខែ 💼', 'សេវាកម្ម 🛠️', 'វិនិយោគ 📈', 'ផ្សេងៗ ✨'],
-    expense: ['អាហារ 🍔', 'ការធ្វើដំណើរ 🚗', 'ទិញទំនិញ 🛒', 'ទឹកភ្លើង ⚡', 'ទីផ្សារ 📢', 'បុគ្គលិក 👥', 'ផ្សេងៗ 🧩']
-  };
-  const [formData, setFormData] = useState({ id: null, type: 'income', amount: '', currency: 'USD', category: CATEGORIES.income[0], date: new Date().toISOString().split('T')[0], note: '' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (formData.id) {
-      setTransactions(transactions.map(t => t.id === formData.id ? { ...formData } : t));
-    } else {
-      setTransactions([...transactions, { ...formData, id: Date.now().toString() }]);
-    }
-    setIsFormOpen(false);
-    resetForm();
-  };
-
-  const resetForm = () => setFormData({ id: null, type: 'income', amount: '', currency: 'USD', category: CATEGORIES.income[0], date: new Date().toISOString().split('T')[0], note: '' });
-
-  const handleEdit = (t) => { setFormData(t); setIsFormOpen(true); };
-  const handleDelete = (id) => { if (confirm('តើអ្នកពិតជាចង់លុបទិន្នន័យនេះមែនទេ? 🗑️')) setTransactions(transactions.filter(t => t.id !== id)); };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-            បញ្ជីប្រតិបត្តិការ <span className="text-2xl">🧾</span>
-          </h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">គ្រប់គ្រងចំណូល និងចំណាយប្រចាំថ្ងៃរបស់អ្នក</p>
-        </div>
-        <button onClick={() => { resetForm(); setIsFormOpen(true); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold flex items-center space-x-2 shadow-sm shadow-indigo-200 transition-all w-full sm:w-auto justify-center group">
-          <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
-          <span>បន្ថែមថ្មី</span>
-        </button>
-      </div>
-
-      {isFormOpen && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-lg border border-slate-100 animate-in zoom-in-95 duration-200 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-blue-500" />
-          <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-            {formData.id ? 'កែប្រែប្រតិបត្តិការ ✏️' : 'បន្ថែមប្រតិបត្តិការថ្មី 📝'}
-          </h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">ប្រភេទ</label>
-              <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value, category: CATEGORIES[e.target.value][0]})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold transition-all cursor-pointer">
-                <option value="income">ចំណូល 📈 (+)</option>
-                <option value="expense">ចំណាយ 📉 (-)</option>
-              </select>
-            </div>
-            <div className="flex gap-3">
-               <div className="flex-1 space-y-1.5">
-                <label className="block text-sm font-bold text-slate-700">ចំនួនទឹកប្រាក់</label>
-                <input type="number" required min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold text-lg transition-all" placeholder="0.00" />
-               </div>
-               <div className="w-28 space-y-1.5">
-                <label className="block text-sm font-bold text-slate-700">រូបិយប័ណ្ណ</label>
-                <select value={formData.currency} onChange={(e) => setFormData({...formData, currency: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-bold transition-all cursor-pointer">
-                  <option value="USD">USD 💵</option>
-                  <option value="KHR">KHR ៛</option>
-                </select>
-               </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">ចំណាត់ថ្នាក់</label>
-              <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-semibold transition-all cursor-pointer">
-                {CATEGORIES[formData.type].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">កាលបរិច្ឆេទ</label>
-              <input type="date" required value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-medium transition-all" />
-            </div>
-            <div className="md:col-span-2 space-y-1.5">
-              <label className="block text-sm font-bold text-slate-700">ចំណាំ (Note)</label>
-              <input type="text" value={formData.note} onChange={(e) => setFormData({...formData, note: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 font-medium transition-all placeholder-slate-400" placeholder="ពិពណ៌នាបន្ថែមខ្លីៗ..." />
-            </div>
-            <div className="md:col-span-2 flex justify-end space-x-3 mt-4 pt-6 border-t border-slate-100">
-              <button type="button" onClick={() => setIsFormOpen(false)} className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">បោះបង់ ✖️</button>
-              <button type="submit" className="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">រក្សាទុក 💾</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-slate-500 uppercase text-[11px] font-extrabold tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-4">កាលបរិច្ឆេទ</th>
-                <th className="px-6 py-4">ប្រភេទ & ចំណាត់ថ្នាក់</th>
-                <th className="px-6 py-4">ចំណាំ</th>
-                <th className="px-6 py-4 text-right">ទឹកប្រាក់</th>
-                <th className="px-6 py-4 text-center">សកម្មភាព</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {transactions.slice().reverse().map(t => (
-                <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap font-medium">{new Date(t.date).toLocaleDateString('km-KH')}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${t.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                        {t.type === 'income' ? '📈' : '📉'}
-                      </span>
-                      <span className="font-bold text-slate-700">{t.category}</span>
+            <!-- Main Content Area -->
+            <main class="flex-1 p-6 overflow-y-auto">
+                <!-- Over-budget Warning Banner -->
+                <div id="budget-warning" class="hidden bg-rose-50 border-l-4 border-rose-500 p-4 rounded-xl mb-6 shadow-sm flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-rose-100 text-rose-600 p-2 rounded-lg">
+                            <i class="fa-solid fa-triangle-exclamation text-lg animate-bounce"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-rose-800 text-sm md:text-base">ការព្រមាន៖ លើសកញ្ចប់ថវិកា!</h4>
+                            <p id="budget-warning-desc" class="text-xs md:text-sm text-rose-600">ការចំណាយសរុបប្រចាំខែរបស់អ្នកបានលើសពីដែនកំណត់កញ្ចប់ថវិកាដែលបានកំណត់ហើយ។</p>
+                        </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 max-w-[200px] truncate font-medium">{t.note || '-'}</td>
-                  <td className={`px-6 py-4 text-right font-black whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                     {t.type === 'income' ? '+' : '-'}{t.amount} <span className="text-xs opacity-70 ml-0.5">{t.currency}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => handleEdit(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="កែប្រែ"><Edit size={18} /></button>
-                      <button onClick={() => handleDelete(t.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="លុប"><Trash2 size={18} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {transactions.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center py-16 text-slate-400 font-medium">
-                    <div className="text-5xl mb-4 opacity-50">📂</div>
-                    មិនមានទិន្នន័យនៅឡើយទេ
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BudgetsSavingsView({ transactions, budgets, setBudgets, savings, setSavings, displayCurrency }) {
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const CATEGORIES = { expense: ['អាហារ 🍔', 'ការធ្វើដំណើរ 🚗', 'ទិញទំនិញ 🛒', 'ទឹកភ្លើង ⚡', 'ទីផ្សារ 📢', 'បុគ្គលិក 👥', 'ផ្សេងៗ 🧩'] };
-
-  const [budgetForm, setBudgetForm] = useState({ category: CATEGORIES.expense[0], limit: '', currency: 'USD' });
-  const handleAddBudget = (e) => {
-    e.preventDefault();
-    if(budgetForm.limit) {
-      setBudgets([...budgets.filter(b => b.category !== budgetForm.category), { ...budgetForm, id: Date.now().toString() }]);
-      setBudgetForm({...budgetForm, limit: ''});
-    }
-  };
-
-  const getCategorySpending = (category) => {
-    let spent = 0;
-    transactions.forEach(t => {
-      const d = new Date(t.date);
-      if (t.type === 'expense' && t.category === category && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-         let amt = parseFloat(t.amount);
-         if (t.currency === 'KHR') amt /= 4000;
-         spent += amt;
-      }
-    });
-    return spent;
-  };
-
-  const [savingForm, setSavingForm] = useState({ goalName: '', targetAmount: '', currency: 'USD', currentAmount: 0 });
-  const handleAddSaving = (e) => {
-    e.preventDefault();
-    if(savingForm.goalName && savingForm.targetAmount) {
-      setSavings([...savings, { ...savingForm, id: Date.now().toString() }]);
-      setSavingForm({ goalName: '', targetAmount: '', currency: 'USD', currentAmount: 0 });
-    }
-  };
-  const updateSavingAmount = (id, newAmt) => {
-    setSavings(savings.map(s => s.id === id ? { ...s, currentAmount: newAmt } : s));
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Budgets Section */}
-      <div className="space-y-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-          <h2 className="text-xl font-black text-slate-800 flex items-center mb-6">
-            <div className="bg-indigo-100 p-2 rounded-xl mr-3 text-indigo-600"><PieChart size={24}/></div>
-            កញ្ចប់ថវិកាប្រចាំខែ 📊
-          </h2>
-          <form onSubmit={handleAddBudget} className="flex gap-3 items-end flex-wrap bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
-            <div className="flex-1 min-w-[150px] space-y-1.5">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ចំណាត់ថ្នាក់ចំណាយ</label>
-              <select value={budgetForm.category} onChange={(e) => setBudgetForm({...budgetForm, category: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-semibold text-sm">
-                {CATEGORIES.expense.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="flex-1 min-w-[140px] space-y-1.5">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">កំណត់ទឹកប្រាក់</label>
-              <div className="flex shadow-sm rounded-xl overflow-hidden border border-slate-200 bg-white focus-within:border-indigo-500 transition-colors">
-                <input type="number" required value={budgetForm.limit} onChange={(e) => setBudgetForm({...budgetForm, limit: e.target.value})} className="w-full p-2.5 outline-none font-bold text-sm bg-transparent" placeholder="ឧ: 200" />
-                <select value={budgetForm.currency} onChange={(e) => setBudgetForm({...budgetForm, currency: e.target.value})} className="p-2.5 bg-slate-100 border-l border-slate-200 font-black text-sm outline-none text-slate-700 cursor-pointer">
-                   <option value="USD">$</option><option value="KHR">៛</option>
-                </select>
-              </div>
-            </div>
-            <button type="submit" className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200"><Plus size={20}/></button>
-          </form>
-
-          <div className="space-y-4">
-            {budgets.length === 0 && <p className="text-center text-slate-400 font-medium py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">មិនទាន់មានការកំណត់កញ្ចប់ថវិកាទេ 📝</p>}
-            {budgets.map(b => {
-              const spentUSD = getCategorySpending(b.category);
-              let limitUSD = parseFloat(b.limit);
-              if (b.currency === 'KHR') limitUSD /= 4000;
-              
-              const percent = Math.min((spentUSD / limitUSD) * 100, 100).toFixed(0);
-              const isOver = spentUSD > limitUSD;
-
-              return (
-                <div key={b.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:border-slate-200 transition-colors relative overflow-hidden group">
-                  {isOver && <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />}
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="font-bold text-slate-800 text-base">{b.category}</span>
-                    <span className="text-sm font-black text-slate-700 bg-slate-50 px-3 py-1 rounded-lg">
-                      <span className={isOver ? 'text-red-600' : 'text-indigo-600'}>{spentUSD.toFixed(2)}$</span> / <span className="opacity-70">{b.limit} {b.currency}</span>
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
-                    <div className={`h-full rounded-full transition-all duration-1000 ${isOver ? 'bg-gradient-to-r from-red-500 to-rose-500' : percent > 80 ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-400 to-teal-500'}`} style={{ width: `${percent}%` }}></div>
-                  </div>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-[11px] font-bold text-slate-400">{percent}% បានប្រើប្រាស់</span>
-                    <button onClick={() => setBudgets(budgets.filter(x => x.id !== b.id))} className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
-                  </div>
-                  {isOver && <p className="text-xs text-red-500 mt-3 font-bold flex items-center bg-red-50 p-2 rounded-lg"><AlertTriangle size={14} className="mr-1.5"/> លើសកម្រិតកំណត់កញ្ចប់ថវិកា</p>}
                 </div>
-              );
-            })}
-          </div>
+
+                <!-- DASHBOARD SECTION -->
+                <section id="section-dashboard" class="space-y-6">
+                    <!-- Summary Cards Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Income Card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div class="space-y-1">
+                                <span class="text-xs text-slate-500 font-medium">ចំណូលសរុប (Total Income)</span>
+                                <h3 id="dash-total-income-usd" class="text-xl font-bold text-emerald-600">$0.00</h3>
+                                <p id="dash-total-income-khr" class="text-xs font-semibold text-emerald-500 font-khmer">0 ៛</p>
+                            </div>
+                            <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl self-start">
+                                <i class="fa-solid fa-arrow-trend-up text-xl"></i>
+                            </div>
+                        </div>
+                        <!-- Expense Card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div class="space-y-1">
+                                <span class="text-xs text-slate-500 font-medium">ចំណាយសរុប (Total Expense)</span>
+                                <h3 id="dash-total-expense-usd" class="text-xl font-bold text-rose-600">$0.00</h3>
+                                <p id="dash-total-expense-khr" class="text-xs font-semibold text-rose-500 font-khmer">0 ៛</p>
+                            </div>
+                            <div class="bg-rose-50 text-rose-600 p-3 rounded-xl self-start">
+                                <i class="fa-solid fa-arrow-trend-down text-xl"></i>
+                            </div>
+                        </div>
+                        <!-- Balance Card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div class="space-y-1">
+                                <span class="text-xs text-slate-500 font-medium">សមតុល្យសរុប (Balance)</span>
+                                <h3 id="dash-balance-usd" class="text-xl font-bold text-blue-600">$0.00</h3>
+                                <p id="dash-balance-khr" class="text-xs font-semibold text-blue-500 font-khmer">0 ៛</p>
+                            </div>
+                            <div class="bg-blue-50 text-blue-600 p-3 rounded-xl self-start">
+                                <i class="fa-solid fa-scale-balanced text-xl"></i>
+                            </div>
+                        </div>
+                        <!-- Budget Progress Card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                            <div class="flex items-start justify-between">
+                                <div class="space-y-1">
+                                    <span class="text-xs text-slate-500 font-medium">ផែនការថវិកា (Budget)</span>
+                                    <h3 id="dash-budget-amount-usd" class="text-base font-bold text-indigo-600">$0.00</h3>
+                                    <p id="dash-budget-amount-khr" class="text-[11px] font-semibold text-indigo-400 font-khmer">0 ៛</p>
+                                </div>
+                                <button onclick="openBudgetModal()" class="text-slate-400 hover:text-indigo-600 p-1 transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                            </div>
+                            <div class="w-full">
+                                <div class="flex justify-between text-[9px] text-slate-400 mb-1">
+                                    <span id="budget-percent-label">ប្រើប្រាស់ 0%</span>
+                                    <span id="budget-remaining-label">នៅសល់ $0.00 / 0 ៛</span>
+                                </div>
+                                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div id="budget-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Charts & Recent Transactions -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Income/Expense Chart -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">ស្ថិតិប្រៀបធៀបចំណូល-ចំណាយ ($ USD)</h3>
+                                <span class="text-xs text-slate-400">ប្រចាំខែនេះ</span>
+                            </div>
+                            <div class="h-64 relative flex items-center justify-center">
+                                <canvas id="chartComparison"></canvas>
+                            </div>
+                        </div>
+                        <!-- Expenses by Category Chart -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">ការចំណាយតាមប្រភេទ ($ USD)</h3>
+                                <span class="text-xs text-slate-400">ប្រចាំខែនេះ</span>
+                            </div>
+                            <div class="h-64 relative flex items-center justify-center">
+                                <canvas id="chartCategory"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Action & Recent Trans List -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">ប្រតិបត្តិការថ្មីៗ</h3>
+                                <p class="text-xs text-slate-400 font-khmer">បញ្ជីប្រតិបត្តិការដែលបានបញ្ចូលចុងក្រោយបង្អស់ (បង្ហាញជា ដុល្លារ និងរៀល)</p>
+                            </div>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button onclick="openTransactionModal('income')" class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> បន្ថែមចំណូល
+                                </button>
+                                <button onclick="openTransactionModal('expense')" class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> បន្ថែមចំណាយ
+                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-100 text-xs text-slate-400 font-medium">
+                                        <th class="py-3 px-4">កាលបរិច្ឆេទ</th>
+                                        <th class="py-3 px-4">ប្រភេទ</th>
+                                        <th class="py-3 px-4">ចំណាត់ថ្នាក់</th>
+                                        <th class="py-3 px-4">សម្គាល់</th>
+                                        <th class="py-3 px-4 text-right">ចំនួនទឹកប្រាក់ (USD / KHR)</th>
+                                        <th class="py-3 px-4 text-center">សកម្មភាព</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-transactions-tbody">
+                                    <!-- Dynamic rows here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TRANSACTIONS SECTION -->
+                <section id="section-transactions" class="space-y-6 hidden">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">បញ្ជីប្រតិបត្តិការទាំងអស់</h3>
+                                <p class="text-xs text-slate-400">ស្វែងរក កែតម្រង និងគ្រប់គ្រងទិន្នន័យចំណូលចំណាយរបស់អ្នក</p>
+                            </div>
+                            <div class="flex gap-2 w-full md:w-auto">
+                                <button onclick="openTransactionModal('income')" class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> បន្ថែមចំណូល
+                                </button>
+                                <button onclick="openTransactionModal('expense')" class="flex-1 md:flex-none flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> បន្ថែមចំណាយ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search and Filters bar -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <!-- Search text -->
+                            <div>
+                                <label class="block text-xs text-slate-500 font-medium mb-1">ស្វែងរកតាមចំណាំ</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                    </span>
+                                    <input type="text" id="filter-search" oninput="applyFilters()" class="pl-9 pr-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ស្វែងរក...">
+                                </div>
+                            </div>
+                            <!-- Filter type -->
+                            <div>
+                                <label class="block text-xs text-slate-500 font-medium mb-1">ប្រភេទប្រតិបត្តិការ</label>
+                                <select id="filter-type" onchange="applyFilters()" class="px-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                                    <option value="all">ទាំងអស់ (All)</option>
+                                    <option value="income">ចំណូល (Income)</option>
+                                    <option value="expense">ចំណាយ (Expense)</option>
+                                </select>
+                            </div>
+                            <!-- Filter start date -->
+                            <div>
+                                <label class="block text-xs text-slate-500 font-medium mb-1">ចាប់ពីថ្ងៃ</label>
+                                <input type="date" id="filter-start-date" onchange="applyFilters()" class="px-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            </div>
+                            <!-- Filter end date -->
+                            <div>
+                                <label class="block text-xs text-slate-500 font-medium mb-1">ដល់ថ្ងៃ</label>
+                                <input type="date" id="filter-end-date" onchange="applyFilters()" class="px-3 py-2 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Table Data -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-100 text-xs text-slate-400 font-medium">
+                                        <th class="py-3 px-4">កាលបរិច្ឆេទ</th>
+                                        <th class="py-3 px-4">ប្រភេទ</th>
+                                        <th class="py-3 px-4">ចំណាត់ថ្នាក់</th>
+                                        <th class="py-3 px-4">សម្គាល់</th>
+                                        <th class="py-3 px-4 text-right">ចំនួនទឹកប្រាក់ (USD / KHR)</th>
+                                        <th class="py-3 px-4 text-center">សកម្មភាព</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="all-transactions-tbody">
+                                    <!-- Dynamic list -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BUDGET & SAVINGS SECTION -->
+                <section id="section-budget-savings" class="space-y-6 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Setup Budget card -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">កញ្ចប់ថវិការបស់អ្នក</h3>
+                                <p class="text-xs text-slate-400">កំណត់ដែនកំណត់ចំណាយប្រចាំខែ</p>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">កញ្ចប់ថវិកាបច្ចុប្បន្ន (USD)</label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm font-semibold">$</span>
+                                        <input type="number" step="0.01" oninput="updateModalBudgetKhrHelper(this.value, 'budget-khr-helper')" id="budget-input-val" class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                                    </div>
+                                    <span id="budget-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛ (អត្រា៖ $1 = 4,100 ៛)</span>
+                                </div>
+                                <button onclick="updateMonthlyBudget()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition-colors shadow-sm">
+                                    រក្សាទុកកញ្ចប់ថវិកា
+                                </button>
+                            </div>
+                            <div class="p-4 bg-indigo-50 rounded-xl space-y-2">
+                                <h4 class="text-xs font-bold text-indigo-800">ហេតុអ្វីបានជាត្រូវកំណត់កញ្ចប់ថវិកា?</h4>
+                                <p class="text-[11px] text-indigo-600 leading-relaxed font-khmer">ការកំណត់កញ្ចប់ថវិកាជួយឱ្យអ្នកគ្រប់គ្រង និងតាមដានរាល់ការចំណាយមិនឱ្យលើសពីផែនការការងារដែលបានគ្រោងទុក និងជួយសន្សំប្រាក់បានកាន់តែច្រើន។</p>
+                            </div>
+                        </div>
+
+                        <!-- Savings Goal list -->
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-sm sm:text-base">គោលដៅសន្សំប្រាក់</h3>
+                                    <p class="text-xs text-slate-400">កំណត់គោលដៅ និងកត់ត្រាការសន្សំរបស់អ្នក</p>
+                                </div>
+                                <button onclick="openSavingModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-plus"></i> បង្កើតគោលដៅថ្មី
+                                </button>
+                            </div>
+
+                            <!-- Grid container for savings cards -->
+                            <div id="savings-goals-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <!-- Dynamic Saving Cards -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DEBTS SECTION -->
+                <section id="section-debts" class="space-y-6 hidden">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">ការតាមដានបំណុល និងគណនីត្រូវទារ</h3>
+                                <p class="text-xs text-slate-400">កត់ត្រាការជំពាក់គេ (Debts) និងគេជំពាក់យើង (Receivables)</p>
+                            </div>
+                            <button onclick="openDebtModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                <i class="fa-solid fa-plus"></i> បន្ថែមកំណត់ត្រាបំណុល
+                            </button>
+                        </div>
+
+                        <!-- Summary numbers -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-rose-50 border border-rose-100 p-4 rounded-xl flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-rose-600 font-medium">យើងជំពាក់គេសរុប (Total Debt)</p>
+                                    <h4 id="debt-total-borrowed-usd" class="text-base font-bold text-rose-700">$0.00</h4>
+                                    <p id="debt-total-borrowed-khr" class="text-xs font-semibold text-rose-500">0 ៛</p>
+                                </div>
+                                <div class="bg-rose-100 text-rose-600 p-2.5 rounded-xl">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                </div>
+                            </div>
+                            <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-emerald-600 font-medium">គេជំពាក់យើងសរុប (Total Receivables)</p>
+                                    <h4 id="debt-total-receivable-usd" class="text-base font-bold text-emerald-700">$0.00</h4>
+                                    <p id="debt-total-receivable-khr" class="text-xs font-semibold text-emerald-500 font-khmer">0 ៛</p>
+                                </div>
+                                <div class="bg-emerald-100 text-emerald-600 p-2.5 rounded-xl">
+                                    <i class="fa-solid fa-arrow-down-left"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Debts Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-100 text-xs text-slate-400 font-medium">
+                                        <th class="py-3 px-4">ប្រភេទ</th>
+                                        <th class="py-3 px-4">ឈ្មោះបុគ្គល</th>
+                                        <th class="py-3 px-4 text-right">ចំនួនទឹកប្រាក់ (USD / KHR)</th>
+                                        <th class="py-3 px-4">កាលបរិច្ឆេទសង</th>
+                                        <th class="py-3 px-4">សម្គាល់</th>
+                                        <th class="py-3 px-4 text-center">ស្ថានភាព</th>
+                                        <th class="py-3 px-4 text-center">សកម្មភាព</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="debts-tbody">
+                                    <!-- Dynamic debt rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- REPORTS SECTION -->
+                <section id="section-reports" class="space-y-6 hidden">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">ទាញយករបាយការណ៍ហិរញ្ញវត្ថុ</h3>
+                                <p class="text-xs text-slate-400 font-khmer">ជ្រើសរើសរបាយការណ៍ និងប្រភេទឯកសារសម្រាប់ទាញយក</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="exportToExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-regular fa-file-excel"></i> ទាញយកជា Excel
+                                </button>
+                                <button onclick="exportToPDF()" class="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-regular fa-file-pdf"></i> ទាញយកជា PDF
+                                </button>
+                                <button onclick="exportToCSV()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+                                    <i class="fa-solid fa-file-csv"></i> ទាញយកជា CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter & Statistics -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Date Filter Selection -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                                <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">ជម្រើសត្រងរបាយការណ៍</h4>
+                                <div class="space-y-2">
+                                    <button onclick="setReportPeriod('daily')" id="period-daily" class="period-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all bg-indigo-50 text-indigo-600">
+                                        <i class="fa-solid fa-calendar-day mr-2"></i> របាយការណ៍ប្រចាំថ្ងៃនេះ
+                                    </button>
+                                    <button onclick="setReportPeriod('weekly')" id="period-weekly" class="period-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100">
+                                        <i class="fa-solid fa-calendar-week mr-2"></i> របាយការណ៍ប្រចាំសប្តាហ៍នេះ
+                                    </button>
+                                    <button onclick="setReportPeriod('monthly')" id="period-monthly" class="period-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100">
+                                        <i class="fa-solid fa-calendar-days mr-2"></i> របាយការណ៍ប្រចាំខែនេះ
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Statistics Breakdown -->
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 md:col-span-2 grid grid-cols-3 gap-3 items-center">
+                                <div class="text-center space-y-1">
+                                    <p class="text-[10px] text-slate-500 font-medium">ចំណូលសរុប</p>
+                                    <h4 id="report-stat-income-usd" class="text-base font-bold text-emerald-600">$0.00</h4>
+                                    <p id="report-stat-income-khr" class="text-[11px] font-semibold text-emerald-500">0 ៛</p>
+                                </div>
+                                <div class="text-center border-x border-slate-200 space-y-1">
+                                    <p class="text-[10px] text-slate-500 font-medium">ចំណាយសរុប</p>
+                                    <h4 id="report-stat-expense-usd" class="text-base font-bold text-rose-600">$0.00</h4>
+                                    <p id="report-stat-expense-khr" class="text-[11px] font-semibold text-rose-500">0 ៛</p>
+                                </div>
+                                <div class="text-center space-y-1">
+                                    <p class="text-[10px] text-slate-500 font-medium">សមតុល្យសុទ្ធ</p>
+                                    <h4 id="report-stat-balance-usd" class="text-base font-bold text-indigo-600">$0.00</h4>
+                                    <p id="report-stat-balance-khr" class="text-[11px] font-semibold text-indigo-500">0 ៛</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Report table -->
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider">ទិន្នន័យលម្អិតនៃរបាយការណ៍</h4>
+                            <div class="overflow-x-auto">
+                                <table id="report-table" class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 bg-slate-50 text-xs text-slate-500 font-semibold">
+                                            <th class="py-2.5 px-4">កាលបរិច្ឆេទ</th>
+                                            <th class="py-2.5 px-4">ប្រភេទ</th>
+                                            <th class="py-2.5 px-4">ចំណាត់ថ្នាក់</th>
+                                            <th class="py-2.5 px-4">ការសម្គាល់</th>
+                                            <th class="py-2.5 px-4 text-right">ចំនួនទឹកប្រាក់ (USD / KHR)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-tbody">
+                                        <!-- Dynamic report rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
-      </div>
+    </div>
 
-      {/* Savings Section */}
-      <div className="space-y-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-          <h2 className="text-xl font-black text-slate-800 flex items-center mb-6">
-            <div className="bg-emerald-100 p-2 rounded-xl mr-3 text-emerald-600"><Target size={24}/></div>
-            គោលដៅសន្សំប្រាក់ 🎯
-          </h2>
-          <form onSubmit={handleAddSaving} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 grid grid-cols-2 gap-4 mb-6">
-            <div className="col-span-2 space-y-1.5">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ឈ្មោះគោលដៅ 🏆</label>
-              <input type="text" required value={savingForm.goalName} onChange={(e) => setSavingForm({...savingForm, goalName: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 font-semibold" placeholder="ឧ: ទិញកុំព្យូទ័រថ្មី 💻" />
+    <!-- MODAL: ADD/EDIT TRANSACTION -->
+    <div id="transaction-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="transaction-modal-title" class="font-bold text-slate-800">បន្ថែមប្រតិបត្តិការ</h3>
+                <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ចំនួនត្រូវសន្សំ</label>
-              <input type="number" required value={savingForm.targetAmount} onChange={(e) => setSavingForm({...savingForm, targetAmount: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 font-bold" placeholder="0.00" />
-            </div>
-            <div className="space-y-1.5">
-               <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">រូបិយប័ណ្ណ</label>
-               <select value={savingForm.currency} onChange={(e) => setSavingForm({...savingForm, currency: e.target.value})} className="w-full p-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 font-black cursor-pointer">
-                 <option value="USD">USD 💵</option><option value="KHR">KHR ៛</option>
-               </select>
-            </div>
-            <button type="submit" className="col-span-2 bg-emerald-600 text-white p-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200 mt-2 flex justify-center items-center gap-2">
-              <span>បង្កើតគោលដៅថ្មី</span> <span className="text-lg">✨</span>
-            </button>
-          </form>
+            <form onsubmit="saveTransaction(event)" class="p-6 space-y-4">
+                <input type="hidden" id="tx-id">
+                <input type="hidden" id="tx-type" value="income">
 
-          <div className="space-y-4">
-            {savings.length === 0 && <p className="text-center text-slate-400 font-medium py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">មិនទាន់មានគោលដៅសន្សំទេ 🌱</p>}
-            {savings.map(s => {
-              const percentNum = (s.currentAmount / s.targetAmount) * 100;
-              const percent = Math.min(percentNum, 100).toFixed(0);
-              const isDone = percentNum >= 100;
-
-              return (
-                <div key={s.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group hover:border-emerald-200 transition-colors">
-                  {isDone && <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">សម្រេចគោលដៅ 🎉</div>}
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                        {s.goalName} {isDone && <CheckCircle size={18} className="text-emerald-500"/>}
-                      </h4>
-                      <p className="text-xs font-bold text-slate-500 mt-0.5">គោលដៅ: {s.targetAmount} {s.currency}</p>
-                    </div>
-                    <button onClick={() => { if(confirm('លុបគោលដៅនេះ?')) setSavings(savings.filter(x => x.id !== s.id)) }} className="text-slate-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
-                  </div>
-                  
-                  <div className="mt-4 mb-3 relative">
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-emerald-700">{s.currentAmount} {s.currency}</span>
-                      <span className="text-slate-400">{percent}%</span>
-                    </div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-3.5 overflow-hidden shadow-inner">
-                      <div className={`h-full rounded-full transition-all duration-1000 ${isDone ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-gradient-to-r from-blue-400 to-indigo-500'}`} style={{ width: `${percent}%` }}>
-                        <div className="w-full h-full bg-white/20 animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <button 
-                      onClick={() => {
-                        const add = prompt(`បញ្ចូលទឹកប្រាក់បន្ថែមសម្រាប់ [${s.goalName}] (ជា ${s.currency}):`);
-                        if(add && !isNaN(add) && Number(add) > 0) updateSavingAmount(s.id, parseFloat(s.currentAmount) + parseFloat(add));
-                      }}
-                      disabled={isDone}
-                      className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isDone ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100'}`}
-                    >
-                      {isDone ? 'គោលដៅបានសម្រេច 🏆' : <><span>+ បន្ថែមប្រាក់សន្សំ</span> <span>💰</span></>}
+                <!-- Type Selector (Tab design) -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                    <button type="button" id="tab-tx-income" onclick="setTxType('income')" class="py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-emerald-600 shadow-sm">
+                        ចំណូល (Income)
                     </button>
-                  </div>
+                    <button type="button" id="tab-tx-expense" onclick="setTxType('expense')" class="py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600">
+                        ចំណាយ (Expense)
+                    </button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function DebtsView({ debts, setDebts, displayCurrency }) {
-  const [form, setForm] = useState({ type: 'owe', personName: '', amount: '', currency: 'USD', status: 'pending' });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if(form.personName && form.amount) {
-      setDebts([...debts, { ...form, id: Date.now().toString(), date: new Date().toISOString() }]);
-      setForm({ type: 'owe', personName: '', amount: '', currency: 'USD', status: 'pending' });
-    }
-  };
-
-  const toggleStatus = (id) => {
-    setDebts(debts.map(d => d.id === id ? { ...d, status: d.status === 'pending' ? 'paid' : 'pending' } : d));
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <div className="mb-6">
-          <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-            គ្រប់គ្រងបំណុល 🤝
-          </h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">កត់ត្រាការជំពាក់ប្រាក់ និងការឲ្យខ្ចីប្រាក់</p>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex gap-4 items-end flex-wrap mb-8">
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ប្រភេទកំណត់ត្រា</label>
-            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-bold cursor-pointer">
-              <option value="owe">យើងជំពាក់គេ 🔻</option>
-              <option value="lent">គេជំពាក់យើង 🔺</option>
-            </select>
-          </div>
-          <div className="flex-1 min-w-[200px] space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ឈ្មោះបុគ្គល / ស្ថាប័ន 👤</label>
-            <input type="text" required value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-semibold placeholder-slate-400" placeholder="ឈ្មោះអ្នកពាក់ព័ន្ធ..." />
-          </div>
-          <div className="w-36 space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">ទឹកប្រាក់ 💰</label>
-            <input type="number" required value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-black text-lg" placeholder="0.00" />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">រូបិយប័ណ្ណ</label>
-            <select value={form.currency} onChange={e => setForm({...form, currency: e.target.value})} className="p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-black cursor-pointer">
-              <option value="USD">USD 💵</option><option value="KHR">KHR ៛</option>
-            </select>
-          </div>
-          <button type="submit" className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 mt-2 sm:mt-0 w-full sm:w-auto h-[48px]">
-            បន្ថែមបញ្ជី +
-          </button>
-        </form>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {debts.map(d => (
-            <div key={d.id} className={`p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden group ${
-              d.status === 'paid' 
-                ? 'bg-slate-50 border-slate-200 opacity-80 scale-[0.98]' 
-                : d.type === 'owe' ? 'bg-white border-rose-100 shadow-sm shadow-rose-50 hover:shadow-md' : 'bg-white border-blue-100 shadow-sm shadow-blue-50 hover:shadow-md'
-            }`}>
-              {d.status === 'paid' && (
-                <div className="absolute inset-0 bg-slate-900/5 backdrop-blur-[1px] z-10 flex items-center justify-center pointer-events-none">
-                  <div className="transform -rotate-12 border-4 border-emerald-500/30 text-emerald-600/40 text-2xl font-black px-4 py-1 rounded-xl uppercase tracking-widest">ទូទាត់រួច</div>
-                </div>
-              )}
-              
-              <div className="flex justify-between items-start mb-4">
+                <!-- Date -->
                 <div>
-                  <span className={`inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full mb-3 ${
-                    d.type === 'owe' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {d.type === 'owe' ? '🔻 យើងជំពាក់គេ' : '🔺 គេជំពាក់យើង'}
-                  </span>
-                  <h4 className="font-black text-slate-800 text-lg truncate pr-2" title={d.personName}>{d.personName}</h4>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">កាលបរិច្ឆេទ</label>
+                    <input type="date" id="tx-date" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                 </div>
-                <div className="text-right">
-                  <span className={`block font-black text-2xl tracking-tight ${d.status === 'paid' ? 'text-slate-400 line-through' : d.type==='owe'?'text-rose-600':'text-blue-600'}`}>
-                    {d.amount}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500">{d.currency}</span>
-                </div>
-              </div>
 
-              <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
-                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                  📅 {new Date(d.date).toLocaleDateString('km-KH')}
-                </span>
-                <div className="flex gap-2 relative z-20">
-                   <button 
-                    onClick={() => toggleStatus(d.id)} 
-                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-bold transition-colors ${
-                      d.status === 'paid' 
-                        ? 'bg-slate-200 text-slate-600 hover:bg-slate-300' 
-                        : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                    }`}
-                  >
-                    <CheckCircle size={14} /> {d.status === 'paid' ? 'មិនទាន់ទូទាត់?' : 'គូសថាទូទាត់រួច'}
-                   </button>
-                   <button onClick={() => { if(confirm('លុបកំណត់ត្រានេះ?')) setDebts(debts.filter(x => x.id !== d.id)) }} className="text-rose-400 bg-rose-50 hover:bg-rose-100 hover:text-rose-600 p-1.5 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                <!-- Category -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ចំណាត់ថ្នាក់ប្រភេទ</label>
+                    <select id="tx-category" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <!-- Dynamic categories based on type -->
+                    </select>
                 </div>
-              </div>
-            </div>
-          ))}
-          {debts.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              <div className="text-5xl mb-3 opacity-50">✨</div>
-              <p className="text-slate-500 font-bold">អ្នកមិនមានកំណត់ត្រាបំណុលទេ ឡូយណាស់! 😎</p>
-            </div>
-          )}
+
+                <!-- Amount -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ចំនួនទឹកប្រាក់ ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" step="0.01" min="0.01" oninput="updateModalBudgetKhrHelper(this.value, 'tx-khr-helper')" id="tx-amount" required class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="tx-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛ (អត្រា៖ $1 = 4,100 ៛)</span>
+                </div>
+
+                <!-- Note -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">កត់សម្គាល់បន្ថែម</label>
+                    <textarea id="tx-note" rows="2" class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ព័ត៌មានលម្អិតនៃការទិញ ឬទទួលប្រាក់..."></textarea>
+                </div>
+
+                <!-- Footer buttons -->
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeTransactionModal()" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                        បោះបង់
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                        រក្សាទុកទិន្នន័យ
+                    </button>
+                </div>
+            </form>
         </div>
-      </div>
     </div>
-  );
-}
 
-function ReportsView({ transactions, displayCurrency, debts, savings }) {
-  const [filter, setFilter] = useState('month');
+    <!-- MODAL: ADD/EDIT SAVING GOAL -->
+    <div id="saving-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="saving-modal-title" class="font-bold text-slate-800">បង្កើតគោលដៅសន្សំប្រាក់</h3>
+                <button onclick="closeSavingModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="saveSavingGoal(event)" class="p-6 space-y-4">
+                <input type="hidden" id="saving-id">
 
-  const filteredTransactions = useMemo(() => {
-    const now = new Date();
-    return transactions.filter(t => {
-      const d = new Date(t.date);
-      if (filter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      if (filter === 'year') return d.getFullYear() === now.getFullYear();
-      if (filter === 'week') {
-        const diff = now.getTime() - d.getTime();
-        return diff <= 7 * 24 * 60 * 60 * 1000;
-      }
-      return true;
-    });
-  }, [transactions, filter]);
+                <!-- Goal Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ឈ្មោះគោលដៅ</label>
+                    <input type="text" id="saving-name" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ឧ. ទិញកុំព្យូទ័រថ្មី, ដើរកម្សាន្ត...">
+                </div>
 
-  const summary = useMemo(() => {
-    let inc = 0, exp = 0;
-    filteredTransactions.forEach(t => {
-      let amt = parseFloat(t.amount);
-      if (t.currency === 'KHR') amt /= 4000;
-      if (t.type === 'income') inc += amt; else exp += amt;
-    });
-    return { inc, exp, bal: inc - exp };
-  }, [filteredTransactions]);
+                <!-- Target Amount -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ចំនួនទឹកប្រាក់គោលដៅ ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" step="0.01" min="0.01" oninput="updateModalBudgetKhrHelper(this.value, 'save-target-khr-helper')" id="saving-target" required class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="save-target-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛</span>
+                </div>
 
-  const exportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-    csvContent += "កាលបរិច្ឆេទ,ប្រភេទ,ចំណាត់ថ្នាក់,ទឹកប្រាក់,រូបិយប័ណ្ណ,ចំណាំ\n";
-    filteredTransactions.forEach(t => {
-      csvContent += `${t.date},${t.type==='income'?'ចំណូល':'ចំណាយ'},${t.category},${t.amount},${t.currency},${t.note || ''}\n`;
-    });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `របាយការណ៍_ហិរញ្ញវត្ថុ_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-  };
+                <!-- Current Amount -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ប្រាក់សន្សំបច្ចុប្បន្ន ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" step="0.01" min="0" oninput="updateModalBudgetKhrHelper(this.value, 'save-current-khr-helper')" id="saving-current" required class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="save-current-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛</span>
+                </div>
 
-  const handlePrintPDF = () => {
-    window.print();
-  };
+                <!-- Target Date -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ថ្ងៃកំណត់ចុងក្រោយ</label>
+                    <input type="date" id="saving-date" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
 
-  return (
-    <div className="space-y-6 report-container">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 no-print">
-        <div className="flex items-center space-x-3">
-          <div className="bg-indigo-100 p-2.5 rounded-xl text-indigo-600"><FileText size={24}/></div>
-          <h2 className="text-xl font-black text-slate-800">របាយការណ៍ហិរញ្ញវត្ថុ 📊</h2>
+                <!-- Footer buttons -->
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeSavingModal()" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                        បោះបង់
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                        រក្សាទុកគោលដៅ
+                    </button>
+                </div>
+            </form>
         </div>
-        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <select value={filter} onChange={e => setFilter(e.target.value)} className="p-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none text-sm font-bold text-slate-700 flex-1 sm:flex-none cursor-pointer focus:border-indigo-500">
-            <option value="week">សប្តាហ៍នេះ 📅</option>
-            <option value="month">ខែនេះ 🌙</option>
-            <option value="year">ឆ្នាំនេះ 🗓️</option>
-            <option value="all">ទាំងអស់ ♾️</option>
-          </select>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={exportCSV} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-4 py-2.5 rounded-xl text-sm font-bold flex justify-center items-center transition-colors">
-              <Download size={18} className="mr-2"/> <span className="hidden sm:inline">នាំចេញជា</span> CSV
-            </button>
-            <button onClick={handlePrintPDF} className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex justify-center items-center shadow-md shadow-indigo-200 transition-all">
-              <Printer size={18} className="mr-2"/> បោះពុម្ភ PDF
-            </button>
-          </div>
-        </div>
-      </div>
+    </div>
 
-      <div className="bg-white p-6 sm:p-10 rounded-3xl shadow-lg border border-slate-100 print:shadow-none print:border-none print:p-0">
-        <div className="text-center mb-10 border-b border-slate-100 pb-8 print:pb-4">
-          <div className="inline-block bg-slate-100 p-4 rounded-full mb-4 print:hidden">
-            <PieChart size={40} className="text-slate-700" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">របាយការណ៍សង្ខេបប្រតិបត្តិការ</h1>
-          <p className="text-slate-500 font-medium bg-slate-50 inline-block px-4 py-1 rounded-full text-sm mt-2 border border-slate-100">
-            កាលបរិច្ឆេទបោះពុម្ភ៖ <strong className="text-slate-700">{new Date().toLocaleDateString('km-KH')}</strong> 🖨️
-          </p>
-        </div>
+    <!-- MODAL: ADD CONTRIBUTION TO SAVING GOAL -->
+    <div id="saving-contrib-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">បន្ថែមទឹកប្រាក់សន្សំ</h3>
+                <button onclick="closeSavingContribModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="saveSavingContrib(event)" class="p-6 space-y-4">
+                <input type="hidden" id="contrib-saving-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ចំនួនទឹកប្រាក់សន្សំបន្ថែម ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" step="0.01" min="0.01" oninput="updateModalBudgetKhrHelper(this.value, 'contrib-khr-helper')" id="contrib-amount" required class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="contrib-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛</span>
+                </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
-          <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl text-center border border-emerald-100 shadow-sm">
-             <p className="text-emerald-800/60 text-sm font-bold uppercase tracking-wider mb-2">ចំណូលសរុប (USD)</p>
-             <p className="text-3xl font-black text-emerald-600">${summary.inc.toFixed(2)}</p>
-          </div>
-          <div className="p-6 bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl text-center border border-rose-100 shadow-sm">
-             <p className="text-rose-800/60 text-sm font-bold uppercase tracking-wider mb-2">ចំណាយសរុប (USD)</p>
-             <p className="text-3xl font-black text-rose-600">${summary.exp.toFixed(2)}</p>
-          </div>
-          <div className="p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl text-center border border-indigo-100 shadow-sm relative overflow-hidden">
-             <div className="absolute -right-4 -bottom-4 text-6xl opacity-10">⚖️</div>
-             <p className="text-indigo-800/60 text-sm font-bold uppercase tracking-wider mb-2 relative z-10">សមតុល្យ (សល់)</p>
-             <p className={`text-3xl font-black relative z-10 ${summary.bal >= 0 ? 'text-indigo-600' : 'text-rose-600'}`}>
-               ${summary.bal.toFixed(2)}
-             </p>
-          </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeSavingContribModal()" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                        បោះបង់
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                        បន្ថែមការសន្សំ
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
 
-        <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">
-          បញ្ជីប្រតិបត្តិការលម្អិត 📋
-        </h3>
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-100/80 print:bg-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider">
-                <th className="border-b border-slate-200 p-4">កាលបរិច្ឆេទ</th>
-                <th className="border-b border-slate-200 p-4">ប្រភេទ</th>
-                <th className="border-b border-slate-200 p-4">ចំណាត់ថ្នាក់</th>
-                <th className="border-b border-slate-200 p-4 hidden sm:table-cell">ចំណាំ</th>
-                <th className="border-b border-slate-200 p-4 text-right">ទឹកប្រាក់</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredTransactions.slice().reverse().map(t => (
-                <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="p-4 font-medium text-slate-700 whitespace-nowrap">{new Date(t.date).toLocaleDateString('km-KH')}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${t.type==='income'?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`}>
-                      {t.type==='income'?'ចំណូល 📈':'ចំណាយ 📉'}
-                    </span>
-                  </td>
-                  <td className="p-4 font-semibold text-slate-700">{t.category}</td>
-                  <td className="p-4 text-slate-500 hidden sm:table-cell max-w-[200px] truncate">{t.note || '-'}</td>
-                  <td className={`p-4 text-right font-black whitespace-nowrap ${t.type==='income'?'text-emerald-600':'text-rose-600'}`}>
-                    {t.amount} <span className="text-xs opacity-70">{t.currency}</span>
-                  </td>
-                </tr>
-              ))}
-              {filteredTransactions.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-slate-400 font-bold bg-slate-50">មិនមានប្រតិបត្តិការក្នុងអំឡុងពេលនេះទេ 📭</td></tr>}
-            </tbody>
-          </table>
+    <!-- MODAL: ADD/EDIT DEBT -->
+    <div id="debt-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="debt-modal-title" class="font-bold text-slate-800">បន្ថែមកំណត់ត្រាបំណុល</h3>
+                <button onclick="closeDebtModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form onsubmit="saveDebt(event)" class="p-6 space-y-4">
+                <input type="hidden" id="debt-id">
+
+                <!-- Type Selector -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                    <button type="button" id="tab-debt-borrow" onclick="setDebtType('debt')" class="py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-rose-600 shadow-sm">
+                        យើងជំពាក់គេ (Debt)
+                    </button>
+                    <button type="button" id="tab-debt-receive" onclick="setDebtType('receivable')" class="py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600">
+                        គេជំពាក់យើង (Receivable)
+                    </button>
+                </div>
+                <input type="hidden" id="debt-type" value="debt">
+
+                <!-- Person -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ឈ្មោះបុគ្គលជំពាក់</label>
+                    <input type="text" id="debt-person" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ឧ. លោក សុខា, បងស្រី ម៉ារី...">
+                </div>
+
+                <!-- Amount -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ចំនួនទឹកប្រាក់ ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" step="0.01" min="0.01" oninput="updateModalBudgetKhrHelper(this.value, 'debt-amount-khr-helper')" id="debt-amount" required class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="debt-amount-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛</span>
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ថ្ងៃកំណត់សង</label>
+                    <input type="date" id="debt-date" required class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <!-- Note -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">កត់សម្គាល់បន្ថែម</label>
+                    <textarea id="debt-note" rows="2" class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="ឧ. ខ្ចីទិញទំនិញ..."></textarea>
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">ស្ថានភាព</label>
+                    <select id="debt-status" class="px-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <option value="pending">មិនទាន់សង (Pending)</option>
+                        <option value="paid">សងរួចរាល់ (Paid)</option>
+                    </select>
+                </div>
+
+                <!-- Footer buttons -->
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeDebtModal()" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                        បោះបង់
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                        រក្សាទុកទិន្នន័យ
+                    </button>
+                </div>
+            </form>
         </div>
-        
-        <div className="mt-12 pt-8 border-t border-slate-100 hidden print:block text-center text-slate-500 text-sm font-medium">
-           <p>បង្កើតដោយ CamboFin - ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុឆ្លាតវៃ</p>
+    </div>
+
+    <!-- MODAL: SET MONTHLY BUDGET -->
+    <div id="budget-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all duration-300 scale-95">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">កំណត់កញ្ចប់ថវិកាប្រចាំខែ</h3>
+                <button onclick="closeBudgetModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">កញ្ចប់ថវិកា ($ USD)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-semibold">$</span>
+                        <input type="number" oninput="updateModalBudgetKhrHelper(this.value, 'budget-modal-khr-helper')" id="budget-modal-input" class="pl-7 pr-3 py-2 w-full border border-slate-200 rounded-xl text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-semibold text-slate-700" placeholder="0.00">
+                    </div>
+                    <span id="budget-modal-khr-helper" class="text-[10px] text-slate-400 block mt-1">≈ 0 ៛</span>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeBudgetModal()" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors">
+                        បោះបង់
+                    </button>
+                    <button onclick="saveMonthlyBudget()" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-sm">
+                        រក្សាទុក
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-      
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .report-container, .report-container * { visibility: visible; }
-          .report-container { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; }
-          .no-print { display: none !important; }
-          @page { margin: 1cm; size: A4 portrait; }
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 px-6 text-center text-xs text-slate-400">
+        <p>&copy; 2025 ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយប្រចាំថ្ងៃ។ រក្សាសិទ្ធិគ្រប់យ៉ាង។</p>
+    </footer>
+
+    <!-- System JavaScript -->
+    <script>
+        // Categories Definition
+        const incomeCategories = ['ប្រាក់ខែ (Salary)', 'អាជីវកម្ម (Business)', 'វិនិយោគ (Investment)', 'ផ្សេងៗ (Others)'];
+        const expenseCategories = ['អាហារ (Food)', 'ផ្ទះសម្បែង (Housing)', 'ធ្វើដំណើរ (Travel)', 'ការកម្សាន្ត (Entertainment)', 'ទឹកភ្លើង (Utilities)', 'ផ្សេងៗ (Others)'];
+
+        // Core data arrays
+        let transactions = [];
+        let savings = [];
+        let debts = [];
+        let monthlyBudget = 0;
+        let reportPeriod = 'monthly';
+        const exchangeRate = 4100; // USD to KHR stable rate
+
+        // Chart instances
+        let comparisonChart = null;
+        let categoryChart = null;
+
+        // Initialize App
+        window.onload = function() {
+            // Check auth state
+            const loggedInUser = localStorage.getItem('logged_in_user');
+            if (loggedInUser) {
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                document.getElementById('user-display').innerText = loggedInUser;
+            } else {
+                document.getElementById('login-container').classList.remove('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+            }
+
+            // Load state from local storage or set initial samples
+            if (!localStorage.getItem('finance_transactions')) {
+                transactions = [
+  { id: 't1', type: 'income', category: 'ប្រាក់ខែ (Salary)', amount: 1500, date: '2025-02-15', note: 'ប្រាក់ខែប្រចាំខែ' },
+  { id: 't2', type: 'income', category: 'អាជីវកម្ម (Business)', amount: 450, date: '2025-02-18', note: 'លក់ទំនិញអនឡាញ' },
+  { id: 't3', type: 'expense', category: 'អាហារ (Food)', amount: 25, date: '2025-02-18', note: 'អាហារថ្ងៃត្រង់ជួបជុំមិត្តភក្តិ' },
+  { id: 't4', type: 'expense', category: 'ទឹកភ្លើង (Utilities)', amount: 80, date: '2025-02-16', note: 'ថ្លៃទឹកភ្លើងខែចាស់' },
+  { id: 't5', type: 'expense', category: 'ធ្វើដំណើរ (Travel)', amount: 15, date: '2025-02-19', note: 'ចាក់សាំងឡាន' },
+  { id: 't6', type: 'income', category: 'វិនិយោគ (Investment)', amount: 120, date: '2025-02-20', note: 'ភាគលាភប្រចាំត្រីមាស' },
+  { id: 't7', type: 'expense', category: 'ការកម្សាន្ត (Entertainment)', amount: 45, date: '2025-02-21', note: 'ទិញសំបុត្រកុន និងអាហារសម្រន់' }
+];
+                savings = [
+  { id: 's1', name: 'ទិញទូរស័ព្ទថ្មី', targetAmount: 1200, currentAmount: 400, targetDate: '2025-08-30' },
+  { id: 's2', name: 'មូលនិធិអាសន្ន', targetAmount: 3000, currentAmount: 1500, targetDate: '2025-12-31' }
+];
+                debts = [
+  { id: 'd1', type: 'debt', person: 'បង វណ្ណា', amount: 200, dueDate: '2025-03-01', status: 'pending', note: 'ខ្ចីទិញសម្ភារៈការិយាល័យ' },
+  { id: 'd2', type: 'receivable', person: 'លោក សុខា', amount: 150, dueDate: '2025-02-28', status: 'paid', note: 'គាត់ខ្ចីថ្លៃអាហារថ្ងៃត្រង់' }
+];
+                monthlyBudget = 800;
+                saveToLocalStorage();
+            } else {
+                loadFromLocalStorage();
+            }
+
+            // Sync today's date in forms
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('tx-date').value = today;
+            document.getElementById('saving-date').value = today;
+            document.getElementById('debt-date').value = today;
+
+            // Render Views
+            refreshUI();
+        };
+
+        // LOGIN / LOGOUT CONTROLLER
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            localStorage.setItem('logged_in_user', username);
+            
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('user-display').innerText = username;
+
+            refreshUI();
         }
-      `}</style>
-    </div>
-  );
-}
+
+        function handleLogout() {
+            if (confirm('តើអ្នកពិតជាចង់ចាកចេញពីគណនីមែនទេ?')) {
+                localStorage.removeItem('logged_in_user');
+                document.getElementById('login-username').value = '';
+                document.getElementById('login-password').value = '';
+                
+                document.getElementById('login-container').classList.remove('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+            }
+        }
+
+        // DUAL CURRENCY FORMATTERS
+        function formatUSD(val) {
+            return '$' + parseFloat(val).toFixed(2);
+        }
+
+        function formatKHR(val) {
+            const khrVal = Math.round(val * exchangeRate);
+            return khrVal.toLocaleString('en-US') + ' ៛';
+        }
+
+        // Form helper event converter
+        function updateModalBudgetKhrHelper(usdVal, elementId) {
+            const helperSpan = document.getElementById(elementId);
+            if (!usdVal || isNaN(usdVal)) {
+                helperSpan.innerText = '≈ 0 ៛';
+                return;
+            }
+            const khrEquivalent = Math.round(parseFloat(usdVal) * exchangeRate);
+            helperSpan.innerText = `≈ ${khrEquivalent.toLocaleString('en-US')} ៛ (អត្រា៖ $1 = 4,100 ៛)`;
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('finance_transactions', JSON.stringify(transactions));
+            localStorage.setItem('finance_savings', JSON.stringify(savings));
+            localStorage.setItem('finance_debts', JSON.stringify(debts));
+            localStorage.setItem('finance_budget', monthlyBudget.toString());
+        }
+
+        function loadFromLocalStorage() {
+            transactions = JSON.parse(localStorage.getItem('finance_transactions')) || [];
+            savings = JSON.parse(localStorage.getItem('finance_savings')) || [];
+            debts = JSON.parse(localStorage.getItem('finance_debts')) || [];
+            monthlyBudget = parseFloat(localStorage.getItem('finance_budget')) || 0;
+        }
+
+        // NAVIGATION / TABS
+        function switchTab(tabId) {
+            document.querySelectorAll('section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById('section-' + tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-indigo-600', 'bg-indigo-50');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-50');
+            });
+            const activeBtn = document.getElementById('nav-' + tabId);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-50');
+                activeBtn.classList.add('text-indigo-600', 'bg-indigo-50');
+            }
+
+            // Custom renders on tab focus
+            if (tabId === 'dashboard') {
+                renderCharts();
+            } else if (tabId === 'reports') {
+                updateReportView();
+            }
+        }
+
+        // CALCULATE GENERAL STATS
+        function getStats() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            transactions.forEach(t => {
+                const amount = parseFloat(t.amount);
+                if (t.type === 'income') {
+                    totalIncome += amount;
+                } else {
+                    totalExpense += amount;
+                }
+            });
+
+            const balance = totalIncome - totalExpense;
+
+            // Calculate current month's expenses specifically for budget tracking
+            const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
+            let monthlyExpense = 0;
+            transactions.forEach(t => {
+                if (t.type === 'expense' && t.date.substring(0, 7) === currentMonthStr) {
+                    monthlyExpense += parseFloat(t.amount);
+                }
+            });
+
+            return {
+                totalIncome,
+                totalExpense,
+                balance,
+                monthlyExpense
+            };
+        }
+
+        function refreshUI() {
+            const stats = getStats();
+
+            // Render Dashboard Stats (Display both USD & KHR simultaneously on vertical stack)
+            document.getElementById('dash-total-income-usd').innerText = formatUSD(stats.totalIncome);
+            document.getElementById('dash-total-income-khr').innerText = formatKHR(stats.totalIncome);
+
+            document.getElementById('dash-total-expense-usd').innerText = formatUSD(stats.totalExpense);
+            document.getElementById('dash-total-expense-khr').innerText = formatKHR(stats.totalExpense);
+
+            document.getElementById('dash-balance-usd').innerText = formatUSD(stats.balance);
+            document.getElementById('dash-balance-khr').innerText = formatKHR(stats.balance);
+
+            document.getElementById('dash-budget-amount-usd').innerText = formatUSD(monthlyBudget);
+            document.getElementById('dash-budget-amount-khr').innerText = formatKHR(monthlyBudget);
+            document.getElementById('budget-input-val').value = monthlyBudget;
+            updateModalBudgetKhrHelper(monthlyBudget, 'budget-khr-helper');
+
+            // Budget progress rendering
+            const budgetPercent = monthlyBudget > 0 ? Math.min((stats.monthlyExpense / monthlyBudget) * 100, 100) : 0;
+            const remainingBudget = Math.max(monthlyBudget - stats.monthlyExpense, 0);
+
+            document.getElementById('budget-percent-label').innerText = 'ប្រើប្រាស់ ' + budgetPercent.toFixed(1) + '%';
+            document.getElementById('budget-remaining-label').innerText = 'នៅសល់ ' + formatUSD(remainingBudget) + ' / ' + formatKHR(remainingBudget);
+            document.getElementById('budget-progress-bar').style.width = budgetPercent + '%';
+
+            // Custom description warning on budget exceeded with dual-currencies
+            document.getElementById('budget-warning-desc').innerText = `ការចំណាយសរុបប្រចាំខែរបស់អ្នកគឺ ${formatUSD(stats.monthlyExpense)} (${formatKHR(stats.monthlyExpense)}) ដែលបានលើសពីដែនកំណត់កញ្ចប់ថវិកាដែលបានកំណត់ ${formatUSD(monthlyBudget)} (${formatKHR(monthlyBudget)}) ហើយ។`;
+
+            // Budget alert threshold
+            if (monthlyBudget > 0 && stats.monthlyExpense > monthlyBudget) {
+                document.getElementById('budget-warning').classList.remove('hidden');
+                document.getElementById('budget-progress-bar').classList.remove('bg-indigo-600');
+                document.getElementById('budget-progress-bar').classList.add('bg-rose-600');
+            } else {
+                document.getElementById('budget-warning').classList.add('hidden');
+                document.getElementById('budget-progress-bar').classList.remove('bg-rose-600');
+                document.getElementById('budget-progress-bar').classList.add('bg-indigo-600');
+            }
+
+            // Render views
+            renderRecentTransactions();
+            renderAllTransactionsTable();
+            renderSavingsGoals();
+            renderDebts();
+            renderCharts();
+        }
+
+        // RECENT TRANSACTIONS (DASHBOARD)
+        function renderRecentTransactions() {
+            const tbody = document.getElementById('recent-transactions-tbody');
+            tbody.innerHTML = '';
+
+            // Get last 5 transactions sorted by date descending
+            const sortedTx = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (sortedTx.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400 text-xs">មិនទាន់មានប្រតិបត្តិការនៅឡើយទេ</td></tr>`;
+                return;
+            }
+
+            sortedTx.forEach(t => {
+                const isIncome = t.type === 'income';
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-50 text-xs hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-4 text-slate-500 font-medium">${t.date}</td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2 py-1 rounded-md font-semibold text-[10px] ${isIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                                ${isIncome ? 'ចំណូល' : 'ចំណាយ'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-700">${t.category}</td>
+                        <td class="py-3 px-4 text-slate-500 max-w-[150px] truncate">${t.note || '-'}</td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
+                                ${isIncome ? '+' : '-'}${formatUSD(parseFloat(t.amount))}
+                            </div>
+                            <div class="text-[10px] font-semibold text-slate-400">
+                                ${isIncome ? '+' : '-'}${formatKHR(parseFloat(t.amount))}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="editTransaction('${t.id}')" class="p-1 text-slate-400 hover:text-indigo-600 transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteTransaction('${t.id}')" class="p-1 text-slate-400 hover:text-rose-600 transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ALL TRANSACTIONS (LIST WITH FILTERS & SEARCH)
+        function renderAllTransactionsTable() {
+            const tbody = document.getElementById('all-transactions-tbody');
+            tbody.innerHTML = '';
+
+            const filtered = getFilteredTransactions();
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400 text-xs">រកមិនឃើញប្រតិបត្តិការស្របតាមការស្វែងរករបស់អ្នកឡើយ</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(t => {
+                const isIncome = t.type === 'income';
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 text-xs hover:bg-slate-50/70 transition-colors">
+                        <td class="py-3.5 px-4 text-slate-500 font-medium">${t.date}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md font-semibold text-[10px] ${isIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                                ${isIncome ? 'ចំណូល' : 'ចំណាយ'}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 font-semibold text-slate-700">${t.category}</td>
+                        <td class="py-3.5 px-4 text-slate-500 max-w-[180px] truncate">${t.note || '-'}</td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
+                                ${isIncome ? '+' : '-'}${formatUSD(parseFloat(t.amount))}
+                            </div>
+                            <div class="text-[10px] font-semibold text-slate-400">
+                                ${isIncome ? '+' : '-'}${formatKHR(parseFloat(t.amount))}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="editTransaction('${t.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteTransaction('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function getFilteredTransactions() {
+            const searchText = document.getElementById('filter-search').value.toLowerCase();
+            const typeVal = document.getElementById('filter-type').value;
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+
+            return transactions.filter(t => {
+                const matchesSearch = (t.note && t.note.toLowerCase().includes(searchText)) || t.category.toLowerCase().includes(searchText);
+                const matchesType = typeVal === 'all' || t.type === typeVal;
+                const matchesStartDate = !startDate || t.date >= startDate;
+                const matchesEndDate = !endDate || t.date <= endDate;
+
+                return matchesSearch && matchesType && matchesStartDate && matchesEndDate;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date));
+        }
+
+        function applyFilters() {
+            renderAllTransactionsTable();
+        }
+
+        // TRANSACTION MODAL (ADD / EDIT)
+        function openTransactionModal(type = 'income') {
+            document.getElementById('tx-id').value = '';
+            document.getElementById('tx-note').value = '';
+            document.getElementById('tx-amount').value = '';
+            updateModalBudgetKhrHelper(0, 'tx-khr-helper');
+            setTxType(type);
+
+            document.getElementById('transaction-modal-title').innerText = 'បន្ថែមប្រតិបត្តិការ';
+            document.getElementById('transaction-modal').classList.remove('hidden');
+        }
+
+        function closeTransactionModal() {
+            document.getElementById('transaction-modal').classList.add('hidden');
+        }
+
+        function setTxType(type) {
+            document.getElementById('tx-type').value = type;
+            const categorySelect = document.getElementById('tx-category');
+            categorySelect.innerHTML = '';
+
+            const list = type === 'income' ? incomeCategories : expenseCategories;
+            list.forEach(c => {
+                categorySelect.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+
+            // Toggle active classes on model tabs
+            const tabInc = document.getElementById('tab-tx-income');
+            const tabExp = document.getElementById('tab-tx-expense');
+
+            if (type === 'income') {
+                tabInc.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-emerald-600 shadow-sm";
+                tabExp.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600";
+            } else {
+                tabInc.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600";
+                tabExp.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-rose-600 shadow-sm";
+            }
+        }
+
+        function saveTransaction(e) {
+            e.preventDefault();
+            const id = document.getElementById('tx-id').value;
+            const type = document.getElementById('tx-type').value;
+            const date = document.getElementById('tx-date').value;
+            const category = document.getElementById('tx-category').value;
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const note = document.getElementById('tx-note').value;
+
+            if (id) {
+                // Edit mode
+                const index = transactions.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    transactions[index] = { id, type, date, category, amount, note };
+                }
+            } else {
+                // Add mode
+                const newId = 'tx_' + Date.now();
+                transactions.push({ id: newId, type, date, category, amount, note });
+            }
+
+            saveToLocalStorage();
+            refreshUI();
+            closeTransactionModal();
+        }
+
+        function editTransaction(id) {
+            const t = transactions.find(item => item.id === id);
+            if (!t) return;
+
+            document.getElementById('tx-id').value = t.id;
+            setTxType(t.type);
+            document.getElementById('tx-date').value = t.date;
+            document.getElementById('tx-category').value = t.category;
+            document.getElementById('tx-amount').value = t.amount;
+            updateModalBudgetKhrHelper(t.amount, 'tx-khr-helper');
+            document.getElementById('tx-note').value = t.note || '';
+
+            document.getElementById('transaction-modal-title').innerText = 'កែប្រែប្រតិបត្តិការ';
+            document.getElementById('transaction-modal').classList.remove('hidden');
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('តើអ្នកពិតជាចង់លុបប្រតិបត្តិការនេះមែនទេ?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveToLocalStorage();
+                refreshUI();
+            }
+        }
+
+        // MONTHLY BUDGET SETUP
+        function openBudgetModal() {
+            document.getElementById('budget-modal-input').value = monthlyBudget;
+            updateModalBudgetKhrHelper(monthlyBudget, 'budget-modal-khr-helper');
+            document.getElementById('budget-modal').classList.remove('hidden');
+        }
+
+        function closeBudgetModal() {
+            document.getElementById('budget-modal').classList.add('hidden');
+        }
+
+        function saveMonthlyBudget() {
+            const valInput = parseFloat(document.getElementById('budget-modal-input').value);
+            if (!isNaN(valInput) && valInput >= 0) {
+                monthlyBudget = valInput;
+                saveToLocalStorage();
+                refreshUI();
+                closeBudgetModal();
+            }
+        }
+
+        function updateMonthlyBudget() {
+            const valInput = parseFloat(document.getElementById('budget-input-val').value);
+            if (!isNaN(valInput) && valInput >= 0) {
+                monthlyBudget = valInput;
+                saveToLocalStorage();
+                refreshUI();
+                alert('បានរក្សាទុកកញ្ចប់ថវិកាដោយជោគជ័យ!');
+            }
+        }
+
+        // SAVING GOALS
+        function renderSavingsGoals() {
+            const container = document.getElementById('savings-goals-grid');
+            container.innerHTML = '';
+
+            if (savings.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-6 text-slate-400 text-xs">មិនទាន់មានគោលដៅសន្សំនៅឡើយទេ</div>`;
+                return;
+            }
+
+            savings.forEach(g => {
+                const percent = Math.min((g.currentAmount / g.targetAmount) * 100, 100);
+                container.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs sm:text-sm">${g.name}</h4>
+                                <span class="text-[10px] text-slate-400">កាលកំណត់៖ ${g.targetDate}</span>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <button onclick="openSavingContribModal('${g.id}')" title="បន្ថែមទឹកប្រាក់សន្សំ" class="p-1 text-emerald-600 hover:bg-emerald-100 rounded transition-colors text-xs">
+                                    <i class="fa-solid fa-circle-plus text-sm"></i>
+                                </button>
+                                <button onclick="editSavingGoal('${g.id}')" title="កែប្រែ" class="p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors text-xs">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteSavingGoal('${g.id}')" title="លុប" class="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors text-xs">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[10px] font-semibold text-slate-500 mb-1">
+                                <span>សន្សំបាន ${percent.toFixed(1)}%</span>
+                                <div class="text-right">
+                                    <div>${formatUSD(g.currentAmount)} / ${formatUSD(g.targetAmount)}</div>
+                                    <div class="text-[9px] text-slate-400">${formatKHR(g.currentAmount)} / ${formatKHR(g.targetAmount)}</div>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full rounded-full transition-all" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openSavingGoalModal() {
+            document.getElementById('saving-id').value = '';
+            document.getElementById('saving-name').value = '';
+            document.getElementById('saving-target').value = '';
+            document.getElementById('saving-current').value = '0';
+            updateModalBudgetKhrHelper(0, 'save-target-khr-helper');
+            updateModalBudgetKhrHelper(0, 'save-current-khr-helper');
+
+            document.getElementById('saving-modal-title').innerText = 'បង្កើតគោលដៅសន្សំប្រាក់';
+            document.getElementById('saving-modal').classList.remove('hidden');
+        }
+
+        function openSavingModal() {
+            openSavingGoalModal();
+        }
+
+        function closeSavingModal() {
+            document.getElementById('saving-modal').classList.add('hidden');
+        }
+
+        function saveSavingGoal(e) {
+            e.preventDefault();
+            const id = document.getElementById('saving-id').value;
+            const name = document.getElementById('saving-name').value;
+            const targetAmount = parseFloat(document.getElementById('saving-target').value);
+            const currentAmount = parseFloat(document.getElementById('saving-current').value);
+            const targetDate = document.getElementById('saving-date').value;
+
+            if (id) {
+                const index = savings.findIndex(s => s.id === id);
+                if (index !== -1) {
+                    savings[index] = { id, name, targetAmount, currentAmount, targetDate };
+                }
+            } else {
+                const newId = 'save_' + Date.now();
+                savings.push({ id: newId, name, targetAmount, currentAmount, targetDate });
+            }
+
+            saveToLocalStorage();
+            refreshUI();
+            closeSavingModal();
+        }
+
+        function editSavingGoal(id) {
+            const s = savings.find(item => item.id === id);
+            if (!s) return;
+
+            document.getElementById('saving-id').value = s.id;
+            document.getElementById('saving-name').value = s.name;
+            document.getElementById('saving-target').value = s.targetAmount;
+            updateModalBudgetKhrHelper(s.targetAmount, 'save-target-khr-helper');
+            document.getElementById('saving-current').value = s.currentAmount;
+            updateModalBudgetKhrHelper(s.currentAmount, 'save-current-khr-helper');
+            document.getElementById('saving-date').value = s.targetDate;
+
+            document.getElementById('saving-modal-title').innerText = 'កែប្រែគោលដៅសន្សំប្រាក់';
+            document.getElementById('saving-modal').classList.remove('hidden');
+        }
+
+        function deleteSavingGoal(id) {
+            if (confirm('តើអ្នកពិតជាចង់លុបគោលដៅសន្សំនោះមែនទេ?')) {
+                savings = savings.filter(s => s.id !== id);
+                saveToLocalStorage();
+                refreshUI();
+            }
+        }
+
+        // SAVINGS CONTRIBUTIONS
+        function openSavingContribModal(id) {
+            document.getElementById('contrib-saving-id').value = id;
+            document.getElementById('contrib-amount').value = '';
+            updateModalBudgetKhrHelper(0, 'contrib-khr-helper');
+            document.getElementById('saving-contrib-modal').classList.remove('hidden');
+        }
+
+        function closeSavingContribModal() {
+            document.getElementById('saving-contrib-modal').classList.add('hidden');
+        }
+
+        function saveSavingContrib(e) {
+            e.preventDefault();
+            const id = document.getElementById('contrib-saving-id').value;
+            const amount = parseFloat(document.getElementById('contrib-amount').value);
+
+            const s = savings.find(item => item.id === id);
+            if (s && !isNaN(amount)) {
+                s.currentAmount += amount;
+                saveToLocalStorage();
+                refreshUI();
+                closeSavingContribModal();
+            }
+        }
+
+        // DEBTS MANAGEMENT
+        function renderDebts() {
+            const tbody = document.getElementById('debts-tbody');
+            tbody.innerHTML = '';
+
+            let totalBorrowed = 0;
+            let totalReceivable = 0;
+
+            if (debts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400 text-xs">មិនទាន់មានបញ្ជីបំណុលនៅឡើយទេ</td></tr>`;
+                document.getElementById('debt-total-borrowed-usd').innerText = formatUSD(0);
+                document.getElementById('debt-total-borrowed-khr').innerText = formatKHR(0);
+                document.getElementById('debt-total-receivable-usd').innerText = formatUSD(0);
+                document.getElementById('debt-total-receivable-khr').innerText = formatKHR(0);
+                return;
+            }
+
+            debts.forEach(d => {
+                const val = parseFloat(d.amount);
+                const isDebt = d.type === 'debt';
+
+                if (d.status === 'pending') {
+                    if (isDebt) totalBorrowed += val;
+                    else totalReceivable += val;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-50 text-xs hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2 py-1 rounded font-semibold text-[9px] ${isDebt ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}">
+                                ${isDebt ? 'យើងជំពាក់គេ' : 'គេជំពាក់យើង'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-700">${d.person}</td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="font-bold text-slate-800">${formatUSD(val)}</div>
+                            <div class="text-[10px] text-slate-400 font-semibold">${formatKHR(val)}</div>
+                        </td>
+                        <td class="py-3 px-4 text-slate-500 font-medium">${d.dueDate}</td>
+                        <td class="py-3 px-4 text-slate-500 max-w-[150px] truncate">${d.note || '-'}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="toggleDebtStatus('${d.id}')" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold transition-all ${d.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                <i class="fa-solid ${d.status === 'paid' ? 'fa-circle-check' : 'fa-circle-notch'}"></i>
+                                ${d.status === 'paid' ? 'សងហើយ' : 'មិនទាន់សង'}
+                            </button>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="editDebt('${d.id}')" class="p-1 text-slate-400 hover:text-indigo-600 transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button onclick="deleteDebt('${d.id}')" class="p-1 text-slate-400 hover:text-rose-600 transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('debt-total-borrowed-usd').innerText = formatUSD(totalBorrowed);
+            document.getElementById('debt-total-borrowed-khr').innerText = formatKHR(totalBorrowed);
+            
+            document.getElementById('debt-total-receivable-usd').innerText = formatUSD(totalReceivable);
+            document.getElementById('debt-total-receivable-khr').innerText = formatKHR(totalReceivable);
+        }
+
+        // Debt management actions
+        function openDebtModal() {
+            document.getElementById('debt-id').value = '';
+            document.getElementById('debt-person').value = '';
+            document.getElementById('debt-amount').value = '';
+            document.getElementById('debt-note').value = '';
+            document.getElementById('debt-status').value = 'pending';
+            updateModalBudgetKhrHelper(0, 'debt-amount-khr-helper');
+            setDebtType('debt');
+
+            document.getElementById('debt-modal-title').innerText = 'បន្ថែមកំណត់ត្រាបំណុល';
+            document.getElementById('debt-modal').classList.remove('hidden');
+        }
+
+        function closeDebtModal() {
+            document.getElementById('debt-modal').classList.add('hidden');
+        }
+
+        function setDebtType(type) {
+            document.getElementById('debt-type').value = type;
+            const tabBorrow = document.getElementById('tab-debt-borrow');
+            const tabReceive = document.getElementById('tab-debt-receive');
+
+            if (type === 'debt') {
+                tabBorrow.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-rose-600 shadow-sm";
+                tabReceive.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600";
+            } else {
+                tabBorrow.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all text-slate-600";
+                tabReceive.className = "py-2 text-xs font-semibold rounded-lg text-center transition-all bg-white text-emerald-600 shadow-sm";
+            }
+        }
+
+        function saveDebt(e) {
+            e.preventDefault();
+            const id = document.getElementById('debt-id').value;
+            const type = document.getElementById('debt-type').value;
+            const person = document.getElementById('debt-person').value;
+            const amount = parseFloat(document.getElementById('debt-amount').value);
+            const dueDate = document.getElementById('debt-date').value;
+            const note = document.getElementById('debt-note').value;
+            const status = document.getElementById('debt-status').value;
+
+            if (id) {
+                const index = debts.findIndex(d => d.id === id);
+                if (index !== -1) {
+                    debts[index] = { id, type, person, amount, dueDate, note, status };
+                }
+            } else {
+                const newId = 'debt_' + Date.now();
+                debts.push({ id: newId, type, person, amount, dueDate, note, status });
+            }
+
+            saveToLocalStorage();
+            refreshUI();
+            closeDebtModal();
+        }
+
+        function editDebt(id) {
+            const d = debts.find(item => item.id === id);
+            if (!d) return;
+
+            document.getElementById('debt-id').value = d.id;
+            setDebtType(d.type);
+            document.getElementById('debt-person').value = d.person;
+            document.getElementById('debt-amount').value = d.amount;
+            updateModalBudgetKhrHelper(d.amount, 'debt-amount-khr-helper');
+            document.getElementById('debt-date').value = d.dueDate;
+            document.getElementById('debt-note').value = d.note || '';
+            document.getElementById('debt-status').value = d.status;
+
+            document.getElementById('debt-modal-title').innerText = 'កែប្រែកំណត់ត្រាបំណុល';
+            document.getElementById('debt-modal').classList.remove('hidden');
+        }
+
+        function deleteDebt(id) {
+            if (confirm('តើអ្នកពិតជាចង់លុបបំណុលនេះមែនទេ?')) {
+                debts = debts.filter(d => d.id !== id);
+                saveToLocalStorage();
+                refreshUI();
+            }
+        }
+
+        function toggleDebtStatus(id) {
+            const d = debts.find(item => item.id === id);
+            if (d) {
+                d.status = d.status === 'paid' ? 'pending' : 'paid';
+                saveToLocalStorage();
+                refreshUI();
+            }
+        }
+
+        // CHARTS DATA PREPARATION AND RENDERING (CHART.JS)
+        function renderCharts() {
+            // Destroy existing charts to prevent duplication issues on rebuilds
+            if (comparisonChart) comparisonChart.destroy();
+            if (categoryChart) categoryChart.destroy();
+
+            const ctxComp = document.getElementById('chartComparison').getContext('2d');
+            const ctxCat = document.getElementById('chartCategory').getContext('2d');
+
+            const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
+
+            // 1. Comparison: Income vs Expenses for the current Month
+            let monthlyIncomeSum = 0;
+            let monthlyExpenseSum = 0;
+
+            transactions.forEach(t => {
+                if (t.date.substring(0, 7) === currentMonthStr) {
+                    if (t.type === 'income') monthlyIncomeSum += parseFloat(t.amount);
+                    else monthlyExpenseSum += parseFloat(t.amount);
+                }
+            });
+
+            comparisonChart = new Chart(ctxComp, {
+                type: 'bar',
+                data: {
+                    labels: ['ចំណូល (Income)', 'ចំណាយ (Expense)'],
+                    datasets: [{
+                        label: 'ចំនួនជាដុល្លារ ($)',
+                        data: [monthlyIncomeSum, monthlyExpenseSum],
+                        backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(244, 63, 94, 0.85)'],
+                        borderColor: ['#10b981', '#f43f5e'],
+                        borderWidth: 1.5,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // 2. Expenses Category Breakdown
+            const catMap = {};
+            expenseCategories.forEach(c => catMap[c] = 0);
+
+            transactions.forEach(t => {
+                if (t.type === 'expense' && t.date.substring(0, 7) === currentMonthStr) {
+                    const cat = t.category;
+                    if (catMap[cat] !== undefined) {
+                        catMap[cat] += parseFloat(t.amount);
+                    } else {
+                        catMap[cat] = parseFloat(t.amount);
+                    }
+                }
+            });
+
+            const catLabels = Object.keys(catMap);
+            const catData = Object.values(catMap);
+
+            categoryChart = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: catData,
+                        backgroundColor: [
+                            'rgba(244, 63, 94, 0.8)',
+                            'rgba(249, 115, 22, 0.8)',
+                            'rgba(234, 179, 8, 0.8)',
+                            'rgba(14, 165, 233, 0.8)',
+                            'rgba(168, 85, 247, 0.8)',
+                            'rgba(100, 116, 139, 0.8)'
+                        ],
+                        borderWidth: 1.5,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 10, family: 'Kantumruy Pro' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // REPORTS TAB FILTERING & VIEWS
+        function setReportPeriod(period) {
+            reportPeriod = period;
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.className = "period-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100";
+            });
+            document.getElementById('period-' + period).className = "period-btn w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all bg-indigo-50 text-indigo-600";
+
+            updateReportView();
+        }
+
+        function getReportData() {
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+
+            // Setup date limits
+            let limitDate = '';
+            if (reportPeriod === 'daily') {
+                limitDate = todayStr;
+            } else if (reportPeriod === 'weekly') {
+                // Get start date of the current week (Sunday as start)
+                const currentDay = now.getDay();
+                const diff = now.getDate() - currentDay;
+                const sunday = new Date(now.setDate(diff));
+                limitDate = sunday.toISOString().split('T')[0];
+            } else if (reportPeriod === 'monthly') {
+                // Get start of the current month
+                limitDate = now.toISOString().substring(0, 7) + '-01';
+            }
+
+            return transactions.filter(t => t.date >= limitDate).sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        function updateReportView() {
+            const data = getReportData();
+            const tbody = document.getElementById('report-tbody');
+            tbody.innerHTML = '';
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">មិនមានទិន្នន័យសម្រាប់ជម្រើសត្រងនេះទេ</td></tr>`;
+                document.getElementById('report-stat-income-usd').innerText = formatUSD(0);
+                document.getElementById('report-stat-income-khr').innerText = formatKHR(0);
+                document.getElementById('report-stat-expense-usd').innerText = formatUSD(0);
+                document.getElementById('report-stat-expense-khr').innerText = formatKHR(0);
+                document.getElementById('report-stat-balance-usd').innerText = formatUSD(0);
+                document.getElementById('report-stat-balance-khr').innerText = formatKHR(0);
+                return;
+            }
+
+            data.forEach(t => {
+                const isIncome = t.type === 'income';
+                if (isIncome) totalIncome += parseFloat(t.amount);
+                else totalExpense += parseFloat(t.amount);
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-xs">
+                        <td class="py-3 px-4 font-medium text-slate-500">${t.date}</td>
+                        <td class="py-3 px-4">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded font-semibold text-[9px] ${isIncome ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                                ${isIncome ? 'ចំណូល' : 'ចំណាយ'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 font-semibold text-slate-700">${t.category}</td>
+                        <td class="py-3 px-4 text-slate-500 max-w-[200px] truncate">${t.note || '-'}</td>
+                        <td class="py-3 px-4 text-right">
+                            <div class="font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${formatUSD(parseFloat(t.amount))}</div>
+                            <div class="text-[10px] text-slate-400 font-semibold">${formatKHR(parseFloat(t.amount))}</div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('report-stat-income-usd').innerText = formatUSD(totalIncome);
+            document.getElementById('report-stat-income-khr').innerText = formatKHR(totalIncome);
+            
+            document.getElementById('report-stat-expense-usd').innerText = formatUSD(totalExpense);
+            document.getElementById('report-stat-expense-khr').innerText = formatKHR(totalExpense);
+            
+            document.getElementById('report-stat-balance-usd').innerText = formatUSD(totalIncome - totalExpense);
+            document.getElementById('report-stat-balance-khr').innerText = formatKHR(totalIncome - totalExpense);
+        }
+
+        // EXPORT TO EXCEL
+        function exportToExcel() {
+            const data = getReportData();
+            if (data.length === 0) {
+                alert('គ្មានទិន្នន័យសម្រាប់នាំចេញទេ!');
+                return;
+            }
+
+            // Map data to clean layout
+            const rows = data.map(t => ({
+                'កាលបរិច្ឆេទ (Date)': t.date,
+                'ប្រភេទ (Type)': t.type === 'income' ? 'ចំណូល (Income)' : 'ចំណាយ (Expense)',
+                'ចំណាត់ថ្នាក់ប្រភេទ (Category)': t.category,
+                'ការសម្គាល់ (Description)': t.note || '',
+                'ចំនួនទឹកប្រាក់ (Amount USD)': parseFloat(t.amount),
+                'ចំនួនទឹកប្រាក់ (Amount KHR)': Math.round(parseFloat(t.amount) * exchangeRate)
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "របាយការណ៍ហិរញ្ញវត្ថុ");
+            
+            // Adjust column widths
+            worksheet['!cols'] = [
+                { wch: 15 },
+                { wch: 15 },
+                { wch: 25 },
+                { wch: 30 },
+                { wch: 20 },
+                { wch: 20 }
+            ];
+
+            XLSX.writeFile(workbook, `របាយការណ៍ហិរញ្ញវត្ថុ_${reportPeriod}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // EXPORT TO CSV
+        function exportToCSV() {
+            const data = getReportData();
+            if (data.length === 0) {
+                alert('គ្មានទិន្នន័យសម្រាប់នាំចេញទេ!');
+                return;
+            }
+
+            // Build CSV rows
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Include BOM for proper UTF-8 handling in Excel
+            csvContent += "Date,Type,Category,Description,Amount(USD),Amount(KHR)\r\n";
+
+            data.forEach(t => {
+                const typeStr = t.type === 'income' ? 'Income' : 'Expense';
+                const cleanNote = (t.note || '').replace(/"/g, '""');
+                csvContent += `${t.date},${typeStr},"${t.category}","${cleanNote}",${t.amount},${Math.round(t.amount * exchangeRate)}\r\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `របាយការណ៍ហិរញ្ញវត្ថុ_${reportPeriod}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // EXPORT TO PDF
+        function exportToPDF() {
+            const data = getReportData();
+            if (data.length === 0) {
+                alert('គ្មានទិន្នន័យសម្រាប់នាំចេញទេ!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Set Title
+            doc.setFontSize(16);
+            doc.text(`Financial Report (${reportPeriod.toUpperCase()})`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Export Date: ${new Date().toISOString().split('T')[0]} | Exchange rate: $1 = 4,100 KHR`, 14, 22);
+
+            // Map data
+            const body = data.map(t => [
+                t.date,
+                t.type.toUpperCase(),
+                t.category,
+                t.note || '-',
+                formatUSD(parseFloat(t.amount)),
+                formatKHR(parseFloat(t.amount))
+            ]);
+
+            doc.autoTable({
+                head: [['Date', 'Type', 'Category', 'Description', 'Amount (USD)', 'Amount (KHR)']],
+                body: body,
+                startY: 28,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }, // Indigo 600 color
+                styles: { fontSize: 8 }
+            });
+
+            doc.save(`financial_report_${reportPeriod}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+    </script>
+</body>
+</html>
+```
+Model 11:20 PM
+ThinkingThoughts
+Expand to view model thoughts
+
+chevron_right
